@@ -26,8 +26,8 @@ export default function LoginScreen() {
 
     // Check if the entered credentials match the hardcoded values
     if (badgeNumber === hardcodedUser.badgeNumber && password === hardcodedUser.password) {
-      console.log('Login successful!');
-      router.replace('/HomeScreen'); // Navigate to HomeScreen after login
+      console.log('Login successful!');// Navigate to HomeScreen after login
+      router.replace('/PatientInfoPage');
     } else {
       setError('Invalid credentials');
     }
