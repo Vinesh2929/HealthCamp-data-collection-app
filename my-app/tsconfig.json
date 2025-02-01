@@ -2,6 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@/*": [
         "./*"
@@ -12,6 +14,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-, "app/_layout.jsx", "app/HomeScreen.jsx", "app/HomeScreen.jsx"  ]
+    "expo-env.d.ts",
+    "app/_layout.jsx",
+    "app/index.jsx"
+  ]
 }

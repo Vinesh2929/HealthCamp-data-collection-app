@@ -1,23 +1,29 @@
-import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeScreen from '@/app/HomeScreen'; // Import the HomeScreen
-import PatientInfoPage from '@/app/PatientInfoPage'; // Import the PatientInfoPage
-
-const Stack = createNativeStackNavigator(); // Create the stack navigator
+import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <Stack.Navigator initialRouteName="Home">
+    <Stack>
       <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ headerShown: true }} // Show a header for the home screen
+        name="index"
+        options={{ headerShown: false, title: "App" }}
       />
       <Stack.Screen
-        name="PatientInfo" // This is the route name used in navigation.navigate
-        component={PatientInfoPage}
-        options={{ headerShown: true }} // Show a header for the PatientInfo page
+        name="register"
+        options={{ headerShown: true, title: "Register" }}
       />
-    </Stack.Navigator>
+      <Stack.Screen
+        name="login"
+        options={{ headerShown: true, title: "Login" }}
+      />
+      <Stack.Screen
+        name="PatientInfoPage"
+        options={{
+          headerShown: false,
+          title: "Patient Info",
+          headerLeft: () => null,
+          gestureEnabled: false,
+        }}
+      />
+    </Stack>
   );
 }

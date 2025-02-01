@@ -10,8 +10,8 @@ export default function HomeScreen() {
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Welcome to the App</Text>
       <Button
-        title="Go to Patient Info"
-        onPress={() => navigation.navigate('PatientInfo')} // Navigate to the PatientInfo screen
+        title="Login"
+        onPress={() => navigation.navigate('login')} // Navigate to the PatientInfo screen
       />
     </View>
   );

@@ -14,8 +14,19 @@ import { Checkbox } from "../components/Checkbox"
 import { Button } from "../components/Button"
 import { ThemedText } from "../components/ThemedText"
 import { PlusCircle, Eye, Activity, Thermometer, Droplet, Sun } from "lucide-react-native"
+import { useEffect } from "react";
+import { BackHandler } from "react-native";
+import { useNavigation } from "expo-router";
 
 const PatientInfoPage = () => {
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true)
+    return () => backHandler.remove()
+  }, [])
+
+
+
+
   const [patientInfo, setPatientInfo] = useState({
     medicalHistory: {
       diabetes: false,
