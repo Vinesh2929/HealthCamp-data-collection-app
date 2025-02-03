@@ -3,7 +3,6 @@ import { View, Text, Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {
-  // Use the navigation prop
   const navigation = useNavigation();
 
   return (
