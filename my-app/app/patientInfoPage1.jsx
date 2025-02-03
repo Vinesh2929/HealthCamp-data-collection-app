@@ -9,7 +9,7 @@ import { useNavigation } from "expo-router"
 import axios from "axios"
 
 const PatientInfoPage1 = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation();
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => true)
@@ -20,7 +20,7 @@ const PatientInfoPage1 = () => {
     fname: "",
     lname: "",
     age: "",
-    gender: "",
+    gender: "Male",
     address: "",
     village: "",
     date: "",
@@ -37,17 +37,11 @@ const PatientInfoPage1 = () => {
     }))
   }
 
-  const handleSubmit = async () => {
-    try {
-      const response = await axios.post("http://192.168.2.70:5000/add-patient", patientInfo)
-      console.log("Success:", response.data)
-      alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`)
-      navigation.navigate("PatientInfoPage") 
-    } catch (error) {
-      console.error("Error saving patient info:", error)
-      alert("Failed to save patient information.")
-    }
-  }
+  const handleNext = () => {
+    navigation.navigate("PatientInfoPage", {
+      patientInfo: JSON.stringify(patientInfo), // Convert object to string
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -119,7 +113,7 @@ const PatientInfoPage1 = () => {
             />
           </View>
 
-          <Button title="Submit" onPress={handleSubmit} style={styles.submitButton} />
+          <Button title="Submit" onPress={handleNext} style={styles.submitButton} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
