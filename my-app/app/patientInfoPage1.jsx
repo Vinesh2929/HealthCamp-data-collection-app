@@ -39,7 +39,7 @@ const PatientInfoPage1 = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await axios.post("http://192.168.2.70:5001/add-patient", patientInfo)
+      const response = await axios.post("http://192.168.2.70:5000/add-patient", patientInfo)
       console.log("Success:", response.data)
       alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`)
       navigation.navigate("PatientInfoPage") 
@@ -127,46 +127,92 @@ const PatientInfoPage1 = () => {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#f0f0f0",
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 50,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 24,
-    color: "#007AFF",
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  section: {
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  submitButton: {
-    marginTop: 24,
-    marginBottom: 40,
-  },
-})
+    safeArea: {
+      flex: 1,
+      backgroundColor: "#f0f0f0",
+    },
+    flex: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 50,
+    },
+    header: {
+      fontSize: 28,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 24,
+      color: "#007AFF",
+      textShadowColor: "rgba(0, 0, 0, 0.1)",
+      textShadowOffset: { width: 1, height: 1 },
+      textShadowRadius: 2,
+    },
+    section: {
+      marginBottom: 24,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: "#fff",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginLeft: 8,
+      color: "#333",
+    },
+    addButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 30, // Added bottom margin to avoid overlap
+      alignSelf: "flex-start", // Ensures button stays aligned to the left
+    },
+    addButtonText: {
+      marginLeft: 8,
+      color: "#007AFF",
+      fontSize: 16,
+    },
+    submitButton: {
+      marginTop: 24,
+      marginBottom: 40,
+    },
+    checkboxGrid: {
+      marginBottom: 16,
+    },
+    checkboxWithIcon: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 8,
+      width: "100%",
+    },
+    checkboxContainer: {
+      flex: 1,
+    },
+    iconContainer: {
+      width: 32,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 15,
+    },
+    iconCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+    },
+  })
 
 export default PatientInfoPage1
 
