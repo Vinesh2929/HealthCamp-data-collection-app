@@ -17,15 +17,13 @@ import { PlusCircle, Eye, Activity, Thermometer, Droplet, Sun } from "lucide-rea
 import { useEffect } from "react";
 import { BackHandler } from "react-native";
 import { useNavigation } from "expo-router";
+import axios from "axios";
 
 const PatientInfoPage = () => {
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true)
     return () => backHandler.remove()
   }, [])
-
-
-
 
   const [patientInfo, setPatientInfo] = useState({
     medicalHistory: {
@@ -35,13 +33,13 @@ const PatientInfoPage = () => {
       allergies: [""],
     },
     visionHistory: {
-      visionType: "",
-      eyewear: "",
+      visionType: "Normal",
+      eyewear: "None",
       injuries: "",
     },
     socialHistory: {
-      smoking: "",
-      drinking: "",
+      smoking: "Non-smoker",
+      drinking: "Non-drinker",
     },
     familyHistory: {
       familyHtn: false,
@@ -53,10 +51,14 @@ const PatientInfoPage = () => {
       headaches: false,
       dryEyes: false,
       lightSensitivity: false,
-      prescription: "",
+      prescription: false,
     },
     examinationData: {
-      vitalSigns: "",
+      bloodPressure: "",
+      heartRate: "",
+      oxygenSaturation: "",
+      bloodGlucose: "",
+      bodyTemperature: "",
       visionScore: "",
       refractionValues: "",
     },
@@ -94,8 +96,22 @@ const PatientInfoPage = () => {
     }))
   }
 
-  const handleSubmit = () => {
-    console.log("Patient Info:", patientInfo)
+  const handleSubmit = async () => {
+    const patientData = {
+      name: "Saad Naeem",  // Hardcoded for now
+      age: 21,
+      gender: "Male",
+      ...patientInfo
+    };
+  
+    try {
+      const response = await axios.post("http://192.168.2.70:5001/add-patient", patientData);
+      console.log("Success:", response.data);
+      alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`);
+    } catch (error) {
+      console.error("Error saving patient info:", error);
+      alert("Failed to save patient information.");
+    }
   }
 
   return (
@@ -144,7 +160,7 @@ const PatientInfoPage = () => {
           <Section title="Vision History" icon={<Eye color="#007AFF" size={24} />}>
             <Dropdown
               label="Vision Type"
-              options={["Nearsightedness", "Farsightedness", "Normal"]}
+              options={["Normal", "Farsightedness", "Nearsightedness"]}
               selectedValue={patientInfo.visionHistory.visionType}
               onValueChange={(value) => updatePatientInfo("visionHistory", "visionType", value)}
               small
