@@ -34,16 +34,12 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
-app.post("/add-patient", async (req, res) => {
+app.post("/add-patient-basic-info", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN"); // Start transaction
 
-    const {
-      fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num,  
-      medicalHistory, visionHistory, socialHistory,
-      familyHistory, currentSymptoms, examinationData
-    } = req.body;
+    const { fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num } = req.body;
 
     // Insert Patient Basic Info
     const patientResult = await client.query(
@@ -51,10 +47,34 @@ app.post("/add-patient", async (req, res) => {
       (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING patient_id`,
-    [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num]
+      [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num]
     );
     const patient_id = patientResult.rows[0].patient_id;
     console.log("✅ Inserted Patient ID:", patient_id);
+
+    await client.query("COMMIT"); // Commit transaction
+
+    res.status(201).json({ message: "Basic patient information saved!", patient_id });
+
+  } catch (error) {
+    await client.query("ROLLBACK"); // Rollback if error occurs
+    console.error("❌ Error saving patient info:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/add-patient-medical-info", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN"); // Start transaction
+
+    const { patient_id, medicalHistory, visionHistory, socialHistory, familyHistory, currentSymptoms, examinationData } = req.body;
+
+    if (!patient_id) {
+      throw new Error("Patient ID is required.");
+    }
 
     // Insert Medical History
     const medicalResult = await client.query(
@@ -63,23 +83,17 @@ app.post("/add-patient", async (req, res) => {
     );
     const medical_id = medicalResult.rows[0].medical_id;
 
-    // Insert Allergies (One row per allergy)
+    // Insert Allergies
     for (let allergy of medicalHistory.allergies) {
       if (allergy.trim() !== "") {
-          await client.query(
-          "INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)",
-          [medical_id, allergy]
-          );
+        await client.query("INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)", [medical_id, allergy]);
       }
     }
 
-    // Insert Medications (One row per medication)
+    // Insert Medications
     for (let medication of medicalHistory.medications) {
       if (medication.trim() !== "") {
-          await client.query(
-              "INSERT INTO medications (medical_id, medication) VALUES ($1, $2)",
-              [medical_id, medication]
-          );
+        await client.query("INSERT INTO medications (medical_id, medication) VALUES ($1, $2)", [medical_id, medication]);
       }
     }
 
@@ -115,16 +129,16 @@ app.post("/add-patient", async (req, res) => {
 
     await client.query("COMMIT"); // Commit transaction
 
-    res.status(201).json({ message: "Patient information saved!", patient_id });
+    res.status(201).json({ message: "Medical information saved!" });
 
   } catch (error) {
     await client.query("ROLLBACK"); // Rollback if error occurs
-    console.error("❌ Error saving patient info:", error.stack);
+    console.error("❌ Error saving medical info:", error.stack);
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
-}); 
+});
 
 // Nurse Registration API
 app.post("/register", async (req, res) => {
