@@ -34,6 +34,36 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
+app.get("/percentage-diabetes/:village", async (req, res) => {
+  const { village } = req.params;
+  const client = await pool.connect();
+  try {
+    const totalResult = await client.query(
+      "SELECT COUNT(*) AS total FROM patients WHERE village = $1",
+      [village]
+    );
+
+    const diabeticResult = await client.query(
+      `SELECT COUNT(*) AS diabetic_count 
+       FROM patients p 
+       JOIN medicalhistory m ON p.patient_id = m.patient_id 
+       WHERE p.village = $1 AND m.diabetes = true`,
+      [village]
+    );
+
+    const total = parseInt(totalResult.rows[0].total);
+    const diabeticCount = parseInt(diabeticResult.rows[0].diabetic_count);
+
+    const percentage = total > 0 ? ((diabeticCount / total) * 100).toFixed(2) : 0;
+    res.status(200).json({ village, percentageDiabetes: `${percentage}%` });
+  } catch (error) {
+    console.error("❌ Error fetching diabetes data:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+}); 
+
 app.post("/add-patient", async (req, res) => {
   const client = await pool.connect();
   try {
