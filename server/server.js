@@ -34,28 +34,76 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
-app.post("/add-patient-basic-info", async (req, res) => {
+app.post("/add-patient", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN"); // Start transaction
-
-    const { fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num } = req.body;
-
+    const {
+      fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num,  
+      medicalHistory, visionHistory, socialHistory,
+      familyHistory, currentSymptoms, examinationData
+    } = req.body;
     // Insert Patient Basic Info
     const patientResult = await client.query(
       `INSERT INTO patients 
       (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING patient_id`,
-      [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num]
+    [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num]
     );
     const patient_id = patientResult.rows[0].patient_id;
     console.log("✅ Inserted Patient ID:", patient_id);
-
+    // Insert Medical History
+    const medicalResult = await client.query(
+      "INSERT INTO medicalhistory (patient_id, diabetes, hypertension) VALUES ($1, $2, $3) RETURNING medical_id",
+      [patient_id, medicalHistory.diabetes, medicalHistory.hypertension]
+    );
+    const medical_id = medicalResult.rows[0].medical_id;
+    // Insert Allergies (One row per allergy)
+    for (let allergy of medicalHistory.allergies) {
+      if (allergy.trim() !== "") {
+          await client.query(
+          "INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)",
+          [medical_id, allergy]
+          );
+      }
+    }
+    // Insert Medications (One row per medication)
+    for (let medication of medicalHistory.medications) {
+      if (medication.trim() !== "") {
+          await client.query(
+              "INSERT INTO medications (medical_id, medication) VALUES ($1, $2)",
+              [medical_id, medication]
+          );
+      }
+    }
+    // Insert Vision History
+    await client.query(
+      "INSERT INTO visionhistory (patient_id, vision_type, eyewear, injuries) VALUES ($1, $2, $3, $4)",
+      [patient_id, visionHistory.visionType, visionHistory.eyewear, visionHistory.injuries]
+    );
+    // Insert Social History
+    await client.query(
+      "INSERT INTO socialhistory (patient_id, smoking, drinking) VALUES ($1, $2, $3)",
+      [patient_id, socialHistory.smoking, socialHistory.drinking]
+    );
+    // Insert Family History
+    await client.query(
+      "INSERT INTO familyhistory (patient_id, family_htn, family_dm) VALUES ($1, $2, $3)",
+      [patient_id, familyHistory.familyHtn, familyHistory.familyDm]
+    );
+    // Insert Current Symptoms
+    await client.query(
+      "INSERT INTO currentsymptoms (patient_id, redness, vision_issues, headaches, dry_eyes, light_sensitivity, prescription) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [patient_id, currentSymptoms.redness, currentSymptoms.visionIssues, currentSymptoms.headaches, currentSymptoms.dryEyes, currentSymptoms.lightSensitivity, currentSymptoms.prescription]
+    );
+    // Insert Examination Data
+    await client.query(
+      "INSERT INTO examinationdata (patient_id, blood_pressure, heart_rate, oxygen_saturation, blood_glucose, body_temperature, vision_score, refraction_values) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [patient_id, examinationData.bloodPressure, examinationData.heartRate, examinationData.oxygenSaturation, examinationData.bloodGlucose, examinationData.bodyTemperature, examinationData.visionScore, examinationData.refractionValues]
+    );
     await client.query("COMMIT"); // Commit transaction
-
-    res.status(201).json({ message: "Basic patient information saved!", patient_id });
-
+    res.status(201).json({ message: "Patient information saved!", patient_id });
   } catch (error) {
     await client.query("ROLLBACK"); // Rollback if error occurs
     console.error("❌ Error saving patient info:", error.stack);
@@ -63,82 +111,7 @@ app.post("/add-patient-basic-info", async (req, res) => {
   } finally {
     client.release();
   }
-});
-
-app.post("/add-patient-medical-info", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN"); // Start transaction
-
-    const { patient_id, medicalHistory, visionHistory, socialHistory, familyHistory, currentSymptoms, examinationData } = req.body;
-
-    if (!patient_id) {
-      throw new Error("Patient ID is required.");
-    }
-
-    // Insert Medical History
-    const medicalResult = await client.query(
-      "INSERT INTO medicalhistory (patient_id, diabetes, hypertension) VALUES ($1, $2, $3) RETURNING medical_id",
-      [patient_id, medicalHistory.diabetes, medicalHistory.hypertension]
-    );
-    const medical_id = medicalResult.rows[0].medical_id;
-
-    // Insert Allergies
-    for (let allergy of medicalHistory.allergies) {
-      if (allergy.trim() !== "") {
-        await client.query("INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)", [medical_id, allergy]);
-      }
-    }
-
-    // Insert Medications
-    for (let medication of medicalHistory.medications) {
-      if (medication.trim() !== "") {
-        await client.query("INSERT INTO medications (medical_id, medication) VALUES ($1, $2)", [medical_id, medication]);
-      }
-    }
-
-    // Insert Vision History
-    await client.query(
-      "INSERT INTO visionhistory (patient_id, vision_type, eyewear, injuries) VALUES ($1, $2, $3, $4)",
-      [patient_id, visionHistory.visionType, visionHistory.eyewear, visionHistory.injuries]
-    );
-
-    // Insert Social History
-    await client.query(
-      "INSERT INTO socialhistory (patient_id, smoking, drinking) VALUES ($1, $2, $3)",
-      [patient_id, socialHistory.smoking, socialHistory.drinking]
-    );
-
-    // Insert Family History
-    await client.query(
-      "INSERT INTO familyhistory (patient_id, family_htn, family_dm) VALUES ($1, $2, $3)",
-      [patient_id, familyHistory.familyHtn, familyHistory.familyDm]
-    );
-
-    // Insert Current Symptoms
-    await client.query(
-      "INSERT INTO currentsymptoms (patient_id, redness, vision_issues, headaches, dry_eyes, light_sensitivity, prescription) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [patient_id, currentSymptoms.redness, currentSymptoms.visionIssues, currentSymptoms.headaches, currentSymptoms.dryEyes, currentSymptoms.lightSensitivity, currentSymptoms.prescription]
-    );
-
-    // Insert Examination Data
-    await client.query(
-      "INSERT INTO examinationdata (patient_id, blood_pressure, heart_rate, oxygen_saturation, blood_glucose, body_temperature, vision_score, refraction_values) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [patient_id, examinationData.bloodPressure, examinationData.heartRate, examinationData.oxygenSaturation, examinationData.bloodGlucose, examinationData.bodyTemperature, examinationData.visionScore, examinationData.refractionValues]
-    );
-
-    await client.query("COMMIT"); // Commit transaction
-
-    res.status(201).json({ message: "Medical information saved!" });
-
-  } catch (error) {
-    await client.query("ROLLBACK"); // Rollback if error occurs
-    console.error("❌ Error saving medical info:", error.stack);
-    res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
-  }
-});
+}); 
 
 // Nurse Registration API
 app.post("/register", async (req, res) => {
