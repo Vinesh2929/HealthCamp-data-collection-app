@@ -17,52 +17,53 @@ import { PlusCircle, Eye, Activity, Thermometer, Droplet, Sun } from "lucide-rea
 import { useEffect } from "react";
 import { BackHandler } from "react-native";
 import { useNavigation } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import axios from "axios";
+import * as Network from "expo-network";
+
 
 const PatientInfoPage = () => {
+  const [serverIP, setServerIP] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const params = useLocalSearchParams();
+  const initialPatientInfo = params.patientInfo ? JSON.parse(params.patientInfo) : {};
+
+  // 🔹 Log received data
+  console.log("🔄 Transferred Patient Data from Previous Page:", initialPatientInfo);
+
+
+  const [patientInfo, setPatientInfo] = useState({
+    ...initialPatientInfo, // Merge existing data
+    medicalHistory: { diabetes: false, hypertension: false, medications: [""], allergies: [""] },
+    visionHistory: { visionType: "Normal", eyewear: "None", injuries: "" },
+    socialHistory: { smoking: "Non-smoker", drinking: "Non-drinker" },
+    familyHistory: { familyHtn: false, familyDm: false },
+    currentSymptoms: { redness: false, visionIssues: false, headaches: false, dryEyes: false, lightSensitivity: false, prescription: false },
+    examinationData: { bloodPressure: "", heartRate: "", oxygenSaturation: "", bloodGlucose: "", bodyTemperature: "", visionScore: "", refractionValues: "" }
+  });
+
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true)
     return () => backHandler.remove()
   }, [])
 
-  const [patientInfo, setPatientInfo] = useState({
-    medicalHistory: {
-      diabetes: false,
-      hypertension: false,
-      medications: [""],
-      allergies: [""],
-    },
-    visionHistory: {
-      visionType: "Normal",
-      eyewear: "None",
-      injuries: "",
-    },
-    socialHistory: {
-      smoking: "Non-smoker",
-      drinking: "Non-drinker",
-    },
-    familyHistory: {
-      familyHtn: false,
-      familyDm: false,
-    },
-    currentSymptoms: {
-      redness: false,
-      visionIssues: false,
-      headaches: false,
-      dryEyes: false,
-      lightSensitivity: false,
-      prescription: false,
-    },
-    examinationData: {
-      bloodPressure: "",
-      heartRate: "",
-      oxygenSaturation: "",
-      bloodGlucose: "",
-      bodyTemperature: "",
-      visionScore: "",
-      refractionValues: "",
-    },
-  })
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        console.log("📡 Local IP Address:", ipAddress);
+        setServerIP(ipAddress);
+      } catch (error) {
+        console.error("❌ Error fetching local IP:", error);
+        alert("Failed to retrieve server IP.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLocalIP();
+  }, []);
 
   const updatePatientInfo = (section, field, value) => {
     setPatientInfo((prevState) => ({
@@ -97,19 +98,27 @@ const PatientInfoPage = () => {
   }
 
   const handleSubmit = async () => {
-    const patientData = {
-      name: "Saad Naeem",  // Hardcoded for now
-      age: 21,
-      gender: "Male",
-      ...patientInfo
-    };
+    if (!serverIP) {
+      alert("Server IP not available. Please try again.");
+      return;
+    }
   
     try {
-      const response = await axios.post("http://192.168.2.70:5001/add-patient", patientData);
+      const response = await axios.post(
+        `http://${serverIP}:5001/add-patient`, // Ensure serverIP is correct
+        patientInfo,
+        {
+          headers: {
+            "Content-Type": "application/json", // Ensure JSON format
+            "Accept": "application/json",
+          },
+        }
+      );
+  
       console.log("Success:", response.data);
       alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`);
     } catch (error) {
-      console.error("Error saving patient info:", error);
+      console.error("Error saving patient info:", error.response ? error.response.data : error);
       alert("Failed to save patient information.");
     }
   }
