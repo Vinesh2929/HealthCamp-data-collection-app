@@ -14,7 +14,7 @@ export default function VolunteerDashboard() {
       {/* Navigate to Patient Registration */}
       <Button
         title="Patient Registration"
-        onPress={() => router.push("/register")}
+        onPress={() => router.push("/PatientInfoPage")}
         style={styles.button}
       />
 

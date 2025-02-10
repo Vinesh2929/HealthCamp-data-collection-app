@@ -14,14 +14,14 @@ export default function NurseDashboard() {
       {/* Navigate to Patient Registration */}
       <Button
         title="Register New Patient"
-        onPress={() => router.push("/register")}
+        onPress={() => router.push("/PatientInfoPage")}
         style={styles.button}
       />
 
       {/* Navigate to Patient Lookup */}
       <Button
         title="Search Patient Records"
-        onPress={() => router.push("/PatientInfoPage")}
+        onPress={() => router.push("/PatientLookup")}
         style={styles.button}
       />
 
