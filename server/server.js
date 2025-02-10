@@ -17,21 +17,23 @@ const pool = new Pool({
 });
 
 pool.connect((err, client, release) => {
-    if (err) {
-      console.error("❌ Error connecting to YugabyteDB:", err.stack);
-    } else {
-      console.log("✅ Successfully connected to YugabyteDB on port 5433");
-    }
-    release(); // Release the client back to the pool
+  if (err) {
+    console.error("❌ Error connecting to YugabyteDB:", err.stack);
+  } else {
+    console.log("✅ Successfully connected to YugabyteDB on port 5433");
+  }
+  release(); // Release the client back to the pool
 });
 
 // Initialize Express App
 const app = express();
-app.use(cors({
-  origin: "*", // Allow all origins (use specific origins in production)
-  methods: ["GET", "POST"], // Allow POST and GET
-  allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
-}));
+app.use(
+  cors({
+    origin: "*", // Allow all origins (use specific origins in production)
+    methods: ["GET", "POST"], // Allow POST and GET
+    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
+  })
+);
 app.use(bodyParser.json());
 
 app.get("/percentage-diabetes/:village", async (req, res) => {
@@ -54,7 +56,8 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
     const total = parseInt(totalResult.rows[0].total);
     const diabeticCount = parseInt(diabeticResult.rows[0].diabetic_count);
 
-    const percentage = total > 0 ? ((diabeticCount / total) * 100).toFixed(2) : 0;
+    const percentage =
+      total > 0 ? ((diabeticCount / total) * 100).toFixed(2) : 0;
     res.status(200).json({ village, percentageDiabetes: `${percentage}%` });
   } catch (error) {
     console.error("❌ Error fetching diabetes data:", error.stack);
@@ -62,7 +65,7 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
   } finally {
     client.release();
   }
-}); 
+});
 
 /*app.post("/add-patient", async (req, res) => {
   const client = await pool.connect();
@@ -157,13 +160,26 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
 }); 
 */
 
-// post the info from the station 1 and when it is complete it will set the station 1 from the completion table to true 
+// post the info from the station 1 and when it is complete it will set the station 1 from the completion table to true
 app.post("/station-1-patient-info", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    
-    const { fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num, adhar_number } = req.body;
+
+    const {
+      fname,
+      lname,
+      age,
+      gender,
+      address,
+      village,
+      date,
+      worker_name,
+      DOB,
+      id,
+      phone_num,
+      adhar_number,
+    } = req.body;
 
     // Insert Basic Info
     const patientResult = await client.query(
@@ -171,7 +187,20 @@ app.post("/station-1-patient-info", async (req, res) => {
       (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num, adhar_number) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
       RETURNING patient_id`,
-      [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num, adhar_number]
+      [
+        fname,
+        lname,
+        age,
+        gender,
+        address,
+        village,
+        date,
+        worker_name,
+        DOB,
+        id,
+        phone_num,
+        adhar_number,
+      ]
     );
 
     const patient_id = patientResult.rows[0].patient_id;
@@ -190,7 +219,6 @@ app.post("/station-1-patient-info", async (req, res) => {
 
     await client.query("COMMIT");
     res.status(201).json({ message: "Basic patient info saved!", patient_id });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("❌ Error in Station 1 API:", error.stack);
@@ -200,15 +228,20 @@ app.post("/station-1-patient-info", async (req, res) => {
   }
 });
 
-// post the info from the station 2 and when is is complete it will set the staion 2 from the completion table to true 
+// post the info from the station 2 and when is is complete it will set the staion 2 from the completion table to true
 app.post("/station-2-patient-info", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    const { 
-      patient_id, medicalHistory, visionHistory, socialHistory,
-      familyHistory, currentSymptoms, examinationData 
+    const {
+      patient_id,
+      medicalHistory,
+      visionHistory,
+      socialHistory,
+      familyHistory,
+      currentSymptoms,
+      examinationData,
     } = req.body;
 
     // Medical History Insert
@@ -221,19 +254,30 @@ app.post("/station-2-patient-info", async (req, res) => {
 
     for (let allergy of medicalHistory.allergies) {
       if (allergy.trim() !== "") {
-        await client.query("INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)", [medical_id, allergy]);
+        await client.query(
+          "INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)",
+          [medical_id, allergy]
+        );
       }
     }
 
     for (let medication of medicalHistory.medications) {
       if (medication.trim() !== "") {
-        await client.query("INSERT INTO medications (medical_id, medication) VALUES ($1, $2)", [medical_id, medication]);
+        await client.query(
+          "INSERT INTO medications (medical_id, medication) VALUES ($1, $2)",
+          [medical_id, medication]
+        );
       }
     }
 
     await client.query(
       `INSERT INTO visionhistory (patient_id, vision_type, eyewear, injuries) VALUES ($1, $2, $3, $4)`,
-      [patient_id, visionHistory.visionType, visionHistory.eyewear, visionHistory.injuries]
+      [
+        patient_id,
+        visionHistory.visionType,
+        visionHistory.eyewear,
+        visionHistory.injuries,
+      ]
     );
 
     await client.query(
@@ -249,13 +293,30 @@ app.post("/station-2-patient-info", async (req, res) => {
     await client.query(
       `INSERT INTO currentsymptoms (patient_id, redness, vision_issues, headaches, dry_eyes, light_sensitivity, prescription) 
       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [patient_id, currentSymptoms.redness, currentSymptoms.visionIssues, currentSymptoms.headaches, currentSymptoms.dryEyes, currentSymptoms.lightSensitivity, currentSymptoms.prescription]
+      [
+        patient_id,
+        currentSymptoms.redness,
+        currentSymptoms.visionIssues,
+        currentSymptoms.headaches,
+        currentSymptoms.dryEyes,
+        currentSymptoms.lightSensitivity,
+        currentSymptoms.prescription,
+      ]
     );
 
     await client.query(
       `INSERT INTO examinationdata (patient_id, blood_pressure, heart_rate, oxygen_saturation, blood_glucose, body_temperature, vision_score, refraction_values) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [patient_id, examinationData.bloodPressure, examinationData.heartRate, examinationData.oxygenSaturation, examinationData.bloodGlucose, examinationData.bodyTemperature, examinationData.visionScore, examinationData.refractionValues]
+      [
+        patient_id,
+        examinationData.bloodPressure,
+        examinationData.heartRate,
+        examinationData.oxygenSaturation,
+        examinationData.bloodGlucose,
+        examinationData.bodyTemperature,
+        examinationData.visionScore,
+        examinationData.refractionValues,
+      ]
     );
 
     // Update completion for "station 2"
@@ -266,7 +327,6 @@ app.post("/station-2-patient-info", async (req, res) => {
 
     await client.query("COMMIT");
     res.status(201).json({ message: "Detailed patient info saved!" });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("❌ Error in Station 2 API:", error.stack);
@@ -276,7 +336,7 @@ app.post("/station-2-patient-info", async (req, res) => {
   }
 });
 
-// show the completion info from the patients adhar number 
+// show the completion info from the patients adhar number
 app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
   const client = await pool.connect();
   const { adharNumber } = req.params;
@@ -289,7 +349,9 @@ app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
     );
 
     if (patientResult.rows.length === 0) {
-      return res.status(404).json({ message: "Patient not found with this Adhar number." });
+      return res
+        .status(404)
+        .json({ message: "Patient not found with this Adhar number." });
     }
 
     const patientId = patientResult.rows[0].patient_id;
@@ -301,7 +363,9 @@ app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
     );
 
     if (completionResult.rows.length === 0) {
-      return res.status(404).json({ message: "No completion data found for this patient." });
+      return res
+        .status(404)
+        .json({ message: "No completion data found for this patient." });
     }
 
     res.status(200).json(completionResult.rows[0]);
@@ -313,7 +377,7 @@ app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
   }
 });
 
-// get info from the 1st station form 
+// get info from the 1st station form
 app.get("/get-station-1-info/:patientId", async (req, res) => {
   const client = await pool.connect();
   const { patientId } = req.params;
@@ -340,7 +404,7 @@ app.get("/get-station-1-info/:patientId", async (req, res) => {
   }
 });
 
-// get info from the 2nd station form 
+// get info from the 2nd station form
 app.get("/get-station-2-info/:patientId", async (req, res) => {
   const client = await pool.connect();
   const { patientId } = req.params;
@@ -369,7 +433,9 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
     const result = await client.query(query, [patientId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "No additional information found." });
+      return res
+        .status(404)
+        .json({ message: "No additional information found." });
     }
 
     res.status(200).json(result.rows);
@@ -382,7 +448,7 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
 });
 
 // Nurse Registration API
-// changed it so that the nurse_id is connected to the user id and that will be used to login 
+// changed it so that the nurse_id is connected to the user id and that will be used to login
 /*app.post("/register", async (req, res) => {
   const { first_name, last_name, email, password } = req.body;
 
@@ -427,8 +493,7 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
 
 */
 
-
-app.post("/register", async (req, res) => {
+app.post("/register/nurse", async (req, res) => {
   const { first_name, last_name, email, password } = req.body;
 
   try {
@@ -452,10 +517,9 @@ app.post("/register", async (req, res) => {
       [first_name, last_name, email, hashedPassword]
     );
 
-    const nurse_id =result.rows[0].nurse_id; // Extract nurse_id
+    const nurse_id = result.rows[0].nurse_id; // Extract nurse_id
 
     // Insert into users table
-    
 
     res.status(201).json({
       message: "Nurse registered successfully",
@@ -472,9 +536,8 @@ app.post("/register", async (req, res) => {
   }
 });
 
-
 // Nurse Login API (Use `nurse_id` instead of email)
-app.get("/login", async (req, res) => {
+app.get("/login/nurse", async (req, res) => {
   const { nurse_id, password } = req.body;
 
   try {
@@ -497,15 +560,118 @@ app.get("/login", async (req, res) => {
 
     // Generate JWT token for authentication
     const token = jwt.sign(
-      { nurse_id: nurse.nurse_id },
+      { nurse_id: nurse.nurse_id, role: "nurse" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.json({ message: "Login successful", token });
+    res.json({
+      message: "Nurse login successful",
+      token,
+      role: "nurse",
+    });
   } catch (error) {
     console.error("Error logging in:", error.message);
     res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.post("/register/volunteer", async (req, res) => {
+  const { first_name, last_name, email, password } = req.body;
+
+  try {
+    // 🔹 Check if email already exists
+    const emailCheck = await pool.query(
+      "SELECT * FROM volunteers WHERE email = $1",
+      [email]
+    );
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // 🔹 Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 🔹 Insert volunteer into the database
+    const result = await pool.query(
+      `INSERT INTO volunteers (first_name, last_name, email, password) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING volunteer_id`,
+      [first_name, last_name, email, hashedPassword]
+    );
+
+    const volunteer_id = result.rows[0].volunteer_id; // Extract volunteer_id
+
+    res.status(201).json({
+      message: "Volunteer registered successfully",
+      volunteer_id: volunteer_id, // Return generated ID
+    });
+  } catch (error) {
+    console.error("Error registering volunteer:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.get("/login/volunteer", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // 🔹 Check if volunteer exists by email
+    const result = await pool.query(
+      "SELECT * FROM volunteers WHERE email = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const volunteer = result.rows[0];
+
+    // 🔹 Compare entered password with stored hashed password
+    const isMatch = await bcrypt.compare(password, volunteer.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // 🔹 Generate JWT token
+    const token = jwt.sign(
+      { volunteer_id: volunteer.volunteer_id, role: "volunteer" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Volunteer login successful",
+      token,
+      role: "volunteer",
+    });
+  } catch (error) {
+    console.error("Error logging in volunteer:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.get("/lookup-patient/:adharNumber", async (req, res) => {
+  const { adharNumber } = req.params;
+  const client = await pool.connect();
+
+  try {
+    // 🔹 Fetch patient details by Aadhar number
+    const result = await client.query(
+      `SELECT fname, lname, age, gender, village, phone_num 
+       FROM patients 
+       WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Patient not found." });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("❌ Error fetching patient details:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 

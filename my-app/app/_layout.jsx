@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
   return (
@@ -23,6 +23,10 @@ export default function RootLayout() {
           headerLeft: () => null,
           gestureEnabled: false,
         }}
+      />
+      <Stack.Screen
+        name="volunteerDashboard"
+        options={{ headerShown: true, title: "Volunteer Dashboard" }}
       />
     </Stack>
   );

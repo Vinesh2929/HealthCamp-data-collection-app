@@ -4,20 +4,24 @@ import { useRouter } from "expo-router";
 import { ThemedText } from "../components/ThemedText";
 import { Button } from "../components/Button";
 
-export default function HomeScreen() {
+export default function VolunteerDashboard() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <ThemedText style={styles.title}>Welcome to EXPOGO</ThemedText>
+      <ThemedText style={styles.title}>Volunteer Dashboard</ThemedText>
 
-      {/* Admin Login Button - No navigation */}
-      <Button title="Admin Login" onPress={() => {}} style={styles.button} />
-
-      {/* Healthcare Worker Login Button - Navigates to login.tsx */}
+      {/* Navigate to Patient Registration */}
       <Button
-        title="Healthcare Worker Login"
-        onPress={() => router.push("/login")}
+        title="Patient Registration"
+        onPress={() => router.push("/register")}
+        style={styles.button}
+      />
+
+      {/* Navigate to Patient Lookup */}
+      <Button
+        title="Patient Lookup"
+        onPress={() => router.push("/PatientLookup")} // ✅ Now links to the correct page
         style={styles.button}
       />
     </View>
