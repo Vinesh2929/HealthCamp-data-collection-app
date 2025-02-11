@@ -40,12 +40,18 @@ export default function PatientProgress() {
         <ProgressCard
           title="Registration"
           status={patientProgress.registration}
+          onPress={() => router.push(`/PatientInfoPage`)}
         />
         <ProgressCard
           title="Medical History"
           status={patientProgress.medical}
+          onPress={() => router.push(`/MedicalHistory`)}
         />
-        <ProgressCard title="Testing" status={patientProgress.testing} />
+        <ProgressCard
+          title="Testing"
+          status={patientProgress.testing}
+          onPress={() => router.push(`/VisionTest`)}
+        />
       </View>
 
       {/* Back Button */}

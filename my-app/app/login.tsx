@@ -163,6 +163,7 @@ export default function LoginScreen() {
       password: "password123",
       role: "volunteer",
     },
+    { email: "admin@hospital.com", password: "admin123", role: "admin" },
   ];
 
   const handleLogin = () => {
@@ -194,6 +195,8 @@ export default function LoginScreen() {
         router.replace("/VolunteerDashboard");
       } else if (foundUser.role === "nurse") {
         router.replace("/NurseDashboard");
+      } else if (foundUser.role === "admin") {
+        router.replace("/AdminDashboard");
       } else {
         Alert.alert("Error", "Unknown role assigned.");
       }
