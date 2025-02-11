@@ -1,5 +1,6 @@
 node_modules/
 package-lock.json
+package.json
 
 logs/
 *.log
@@ -11,6 +12,8 @@ yarn-error.log*
 
 .vscode/
 .idea/
+
+package.json
 
 
 .DS_Store
