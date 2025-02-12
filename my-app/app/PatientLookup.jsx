@@ -170,7 +170,7 @@
 //     marginBottom: 4,
 //   },
 // });
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -180,8 +180,11 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Network from "expo-network";
 
 export default function PatientLookup() {
+  const [serverIP, setServerIP] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [adharNumber, setAdharNumber] = useState("");
   const [patientInfo, setPatientInfo] = useState(null);
   const router = useRouter();
@@ -217,20 +220,42 @@ export default function PatientLookup() {
     },
   ];
 
-  const fetchPatientInfo = () => {
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        console.log("📡 Retrieved Local IP Address:", ipAddress);
+        setServerIP(ipAddress);
+      } catch (error) {
+        alert("Failed to retrieve server IP.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLocalIP();
+  }, []);
+
+  const fetchPatientInfo = async () => {
     if (!adharNumber) {
       Alert.alert("Error", "Please enter an Aadhar number.");
       return;
     }
-
-    // 🔹 Search for the patient in the hardcoded list
-    const foundPatient = hardcodedPatients.find(
-      (patient) => patient.adhar_number === adharNumber
-    );
-
-    if (foundPatient) {
-      setPatientInfo(foundPatient);
-    } else {
+  
+    if (!serverIP) {
+      Alert.alert("Error", "Server IP not available yet. Please try again.");
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://${serverIP}:5001/lookup-patient/${adharNumber}`);
+  
+      if (!response.ok) {
+        throw new Error("Patient not found");
+      }
+  
+      const data = await response.json();
+      setPatientInfo(data);
+    } catch (error) {
       Alert.alert("Not Found", "No patient found with this Aadhar number.");
       setPatientInfo(null);
     }
