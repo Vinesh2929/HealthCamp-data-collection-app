@@ -189,42 +189,10 @@ export default function PatientLookup() {
   const [patientInfo, setPatientInfo] = useState(null);
   const router = useRouter();
 
-  // 🔹 Hardcoded Patient Data (Replace with API Calls Later)
-  const hardcodedPatients = [
-    {
-      adhar_number: "123456789012",
-      fname: "John",
-      lname: "Doe",
-      age: 45,
-      gender: "Male",
-      village: "Greenwood",
-      phone_num: "9876543210",
-    },
-    {
-      adhar_number: "987654321098",
-      fname: "Jane",
-      lname: "Smith",
-      age: 38,
-      gender: "Female",
-      village: "Sunnyvale",
-      phone_num: "8765432109",
-    },
-    {
-      adhar_number: "555555555555",
-      fname: "Raj",
-      lname: "Kumar",
-      age: 50,
-      gender: "Male",
-      village: "Bluefield",
-      phone_num: "7654321098",
-    },
-  ];
-
   useEffect(() => {
     const fetchLocalIP = async () => {
       try {
         const ipAddress = await Network.getIpAddressAsync();
-        console.log("📡 Retrieved Local IP Address:", ipAddress);
         setServerIP(ipAddress);
       } catch (error) {
         alert("Failed to retrieve server IP.");
@@ -297,7 +265,7 @@ export default function PatientLookup() {
             onPress={() =>
               router.push({
                 pathname: "/PatientProgress",
-                params: { adharNumber: patientInfo.adhar_number },
+                params: { adharNumber: adharNumber },
               })
             }
           >
