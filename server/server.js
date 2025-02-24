@@ -147,6 +147,34 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
 }); 
 */
 
+// general function to let the api be set to 0.5 to show that it is in progress
+async function updateStation(patientId, stationColumn) {
+  try {
+    const query = `UPDATE "completion.1" SET ${stationColumn} = 0.5 WHERE patient_id = $1;`;
+    await pool.query(query, [patientId]);
+    return { success: true, message: `${stationColumn} updated to 0.5 for patient ${patientId}` };
+  } catch (error) {
+    console.error('Error updating station:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// apis that set the stations to be in progress by setting the value as 0.5 
+app.put('/api/station1-progress/:patient_id', async (req, res) => {
+  const result = await updateStation(req.params.patient_id, 'station1');
+  res.json(result);
+});
+
+app.put('/api/station2-progress/:patient_id', async (req, res) => {
+  const result = await updateStation(req.params.patient_id, 'station2');
+  res.json(result);
+});
+
+app.put('/api/station3-progress/:patient_id', async (req, res) => {
+  const result = await updateStation(req.params.patient_id, 'station3');
+  res.json(result);
+});
+
 // post the info from the station 1 and when it is complete it will set the station 1 from the completion table to true
 app.post("/station-1-patient-info", async (req, res) => {
   const client = await pool.connect();
@@ -200,7 +228,7 @@ app.post("/station-1-patient-info", async (req, res) => {
 
     // Update completion for "station 1"
     await client.query(
-      `UPDATE completion SET "station 1" = true WHERE patient_id = $1`,
+      `UPDATE completion.1 SET "station1" = 1 WHERE patient_id = $1`,
       [patient_id]
     );
 
@@ -422,7 +450,7 @@ app.post("/submit-station-2", async (req, res) => {
     );
 
     await client.query(
-      `UPDATE completion SET "station 2" = true WHERE patient_id = $1`,
+      `UPDATE completion.1 SET "station2" = 1 WHERE patient_id = $1`,
       [patientId]
     );
 
