@@ -215,114 +215,6 @@ app.post("/station-1-patient-info", async (req, res) => {
   }
 });
 
-// post the info from the station 2 and when is is complete it will set the staion 2 from the completion table to true
-app.post("/station-2-patient-info", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const {
-      patient_id,
-      medicalHistory,
-      visionHistory,
-      socialHistory,
-      familyHistory,
-      currentSymptoms,
-      examinationData,
-    } = req.body;
-
-    // Medical History Insert
-    const medicalResult = await client.query(
-      `INSERT INTO medicalhistory (patient_id, diabetes, hypertension) 
-      VALUES ($1, $2, $3) RETURNING medical_id`,
-      [patient_id, medicalHistory.diabetes, medicalHistory.hypertension]
-    );
-    const medical_id = medicalResult.rows[0].medical_id;
-
-    for (let allergy of medicalHistory.allergies) {
-      if (allergy.trim() !== "") {
-        await client.query(
-          "INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)",
-          [medical_id, allergy]
-        );
-      }
-    }
-
-    for (let medication of medicalHistory.medications) {
-      if (medication.trim() !== "") {
-        await client.query(
-          "INSERT INTO medications (medical_id, medication) VALUES ($1, $2)",
-          [medical_id, medication]
-        );
-      }
-    }
-
-    await client.query(
-      `INSERT INTO visionhistory (patient_id, vision_type, eyewear, injuries) VALUES ($1, $2, $3, $4)`,
-      [
-        patient_id,
-        visionHistory.visionType,
-        visionHistory.eyewear,
-        visionHistory.injuries,
-      ]
-    );
-
-    await client.query(
-      `INSERT INTO socialhistory (patient_id, smoking, drinking) VALUES ($1, $2, $3)`,
-      [patient_id, socialHistory.smoking, socialHistory.drinking]
-    );
-
-    await client.query(
-      `INSERT INTO familyhistory (patient_id, family_htn, family_dm) VALUES ($1, $2, $3)`,
-      [patient_id, familyHistory.familyHtn, familyHistory.familyDm]
-    );
-
-    await client.query(
-      `INSERT INTO currentsymptoms (patient_id, redness, vision_issues, headaches, dry_eyes, light_sensitivity, prescription) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        patient_id,
-        currentSymptoms.redness,
-        currentSymptoms.visionIssues,
-        currentSymptoms.headaches,
-        currentSymptoms.dryEyes,
-        currentSymptoms.lightSensitivity,
-        currentSymptoms.prescription,
-      ]
-    );
-
-    await client.query(
-      `INSERT INTO examinationdata (patient_id, blood_pressure, heart_rate, oxygen_saturation, blood_glucose, body_temperature, vision_score, refraction_values) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        patient_id,
-        examinationData.bloodPressure,
-        examinationData.heartRate,
-        examinationData.oxygenSaturation,
-        examinationData.bloodGlucose,
-        examinationData.bodyTemperature,
-        examinationData.visionScore,
-        examinationData.refractionValues,
-      ]
-    );
-
-    // Update completion for "station 2"
-    await client.query(
-      `UPDATE completion SET "station 2" = true WHERE patient_id = $1`,
-      [patient_id]
-    );
-
-    await client.query("COMMIT");
-    res.status(201).json({ message: "Detailed patient info saved!" });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("❌ Error in Station 2 API:", error.stack);
-    res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
-  }
-});
-
 // show the completion info from the patients adhar number
 app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
   const client = await pool.connect();
@@ -433,6 +325,120 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
     client.release();
   }
 });
+
+app.post("/submit-station-2", async (req, res) => {
+  const client = await pool.connect();
+  const patientId = 1901; // HARD-CODED Patient ID (replace this later)
+
+  try {
+    const {
+      ophthalmologyHistory,
+      systemicHistory,
+      allergyHistory,
+      contactLensesHistory,
+      surgicalHistory,
+    } = req.body;
+
+    // Begin Transaction
+    await client.query("BEGIN");
+
+    // 🔹 Insert into **ophthalmology_history**
+    await client.query(
+      `INSERT INTO ophthalmology_history (patient_id, loss_of_vision, loss_of_vision_eye, loss_of_vision_onset, pain, duration, redness, redness_eye, redness_onset, redness_pain, redness_duration, watering, watering_eye, watering_onset, watering_pain, watering_duration, discharge_type, itching, itching_eye, itching_duration, pain_symptom, pain_symptom_eye, pain_symptom_onset, pain_symptom_duration) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+      [
+        patientId,
+        ophthalmologyHistory.lossOfVision,
+        ophthalmologyHistory.lossOfVisionEye,
+        ophthalmologyHistory.lossOfVisionOnset,
+        ophthalmologyHistory.pain,
+        ophthalmologyHistory.duration,
+        ophthalmologyHistory.redness,
+        ophthalmologyHistory.rednessEye,
+        ophthalmologyHistory.rednessOnset,
+        ophthalmologyHistory.rednessPain,
+        ophthalmologyHistory.rednessDuration,
+        ophthalmologyHistory.watering,
+        ophthalmologyHistory.wateringEye,
+        ophthalmologyHistory.wateringOnset,
+        ophthalmologyHistory.wateringPain,
+        ophthalmologyHistory.wateringDuration,
+        ophthalmologyHistory.dischargeType,
+        ophthalmologyHistory.itching,
+        ophthalmologyHistory.itchingEye,
+        ophthalmologyHistory.itchingDuration,
+        ophthalmologyHistory.painSymptom,
+        ophthalmologyHistory.painSymptomEye,
+        ophthalmologyHistory.painSymptomOnset,
+        ophthalmologyHistory.painSymptomDuration,
+      ]
+    );
+
+    // 🔹 Insert into **systemic_history**
+    await client.query(
+      `INSERT INTO systemic_history (patient_id, hypertension, diabetes, heart_disease) 
+      VALUES ($1, $2, $3, $4)`,
+      [
+        patientId,
+        systemicHistory.hypertension,
+        systemicHistory.diabetes,
+        systemicHistory.heartDisease,
+      ]
+    );
+
+    // 🔹 Insert into **allergy_history**
+    await client.query(
+      `INSERT INTO allergy_history (patient_id, drops_allergy, tablets_allergy, seasonal_allergy) 
+      VALUES ($1, $2, $3, $4)`,
+      [
+        patientId,
+        allergyHistory.dropsAllergy,
+        allergyHistory.tabletsAllergy,
+        allergyHistory.seasonalAllergy,
+      ]
+    );
+
+    // 🔹 Insert into **contact_lenses_history**
+    await client.query(
+      `INSERT INTO contact_lenses_history (patient_id, uses_contact_lenses, usage_years, frequency) 
+      VALUES ($1, $2, $3, $4)`,
+      [
+        patientId,
+        contactLensesHistory.usesContactLenses,
+        contactLensesHistory.usageYears || null,
+        contactLensesHistory.frequency,
+      ]
+    );
+
+    // 🔹 Insert into **surgical_history**
+    await client.query(
+      `INSERT INTO surgical_history (patient_id, cataract_or_injury, retinal_lasers) 
+      VALUES ($1, $2, $3)`,
+      [
+        patientId,
+        surgicalHistory.cataractOrInjury,
+        surgicalHistory.retinalLasers,
+      ]
+    );
+
+    await client.query(
+      `UPDATE completion SET "station 2" = true WHERE patient_id = $1`,
+      [patientId]
+    );
+
+    // Commit Transaction
+    await client.query("COMMIT");
+
+    res.status(200).json({ message: "Patient data saved successfully!" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("❌ Error storing patient data:", error);
+    res.status(500).json({ error: "Failed to store patient data" });
+  } finally {
+    client.release();
+  }
+});
+
 
 // Nurse Registration API
 // changed it so that the nurse_id is connected to the user id and that will be used to login
@@ -663,7 +669,7 @@ app.get("/lookup-patient/:adharNumber", async (req, res) => {
 });
 
 // Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

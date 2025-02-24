@@ -1,10 +1,60 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, {useState, useEffect} from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Network from "expo-network";
 
 export default function PatientProgress() {
   const router = useRouter();
   const { adharNumber } = useLocalSearchParams();
+  const [serverIP, setServerIP] = useState(null);
+  const [patientProgress, setPatientProgress] = useState({
+    registration: "Loading...",
+    medical: "Loading...",
+    testing: "Loading...",
+  });
+
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        setServerIP(ipAddress);
+      } catch (error) {
+        Alert.alert("Error", "Failed to retrieve server IP.");
+      }
+    };
+    fetchLocalIP();
+  }, []);
+
+  useEffect(() => {
+    const fetchCompletionStatus = async () => {
+      if (!serverIP) return; // Ensure IP is available before making API call
+      try {
+        const response = await fetch(`http://${serverIP}:5001/get-completion-by-adhar/${adharNumber}`);
+        if (!response.ok) throw new Error("Patient completion data not found.");
+        
+        const data = await response.json();
+        console.log("✅ Completion Data:", data);
+
+        setPatientProgress({
+          registration: data["station 1"] ? "Complete" : "Not Done",
+          medical: data["station 2"] ? "Complete" : "Not Done",
+          testing: data["station 3"] ? "Complete" : "Not Done",
+        });
+      } catch (error) {
+        console.error("❌ Error fetching completion data:", error);
+        Alert.alert("Not Found", "No completion data found for this Aadhar number.");
+      }
+    };
+
+    if (serverIP && adharNumber) {
+      fetchCompletionStatus();
+    }
+  }, [serverIP, adharNumber]);
+
+  useEffect(() => {
+  console.log(adharNumber);
+}, [patientProgress]);  // ✅ This will log every time progress updates
+
 
   // 🔹 Hardcoded Patient Progress Data (Replace with API Calls Later)
   const hardcodedProgress = {
@@ -23,12 +73,6 @@ export default function PatientProgress() {
       medical: "Not Done",
       testing: "Not Done",
     },
-  };
-
-  const patientProgress = hardcodedProgress[adharNumber] || {
-    registration: "Not Found",
-    medical: "Not Found",
-    testing: "Not Found",
   };
 
   return (
