@@ -1,101 +1,114 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
   View,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   SafeAreaView,
+  Switch,
+  Text,
 } from "react-native";
 import { Input } from "../components/Input";
 import { Dropdown } from "../components/Dropdown";
-import { Checkbox } from "../components/Checkbox";
 import { Button } from "../components/Button";
 import { ThemedText } from "../components/ThemedText";
-import {
-  PlusCircle,
-  Eye,
-  Activity,
-  Thermometer,
-  Droplet,
-  Sun,
-} from "lucide-react-native";
-import { useEffect } from "react";
-import { BackHandler } from "react-native";
-import { useNavigation } from "expo-router";
-import { useLocalSearchParams } from "expo-router";
+import { Eye, Activity, Thermometer, Droplet, Sun } from "lucide-react-native";
 import axios from "axios";
 import * as Network from "expo-network";
 
 const PatientInfoPage = () => {
   const [serverIP, setServerIP] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const params = useLocalSearchParams();
-  const initialPatientInfo = params.patientInfo
-    ? JSON.parse(params.patientInfo)
-    : {};
-
-  // 🔹 Log received data
-  console.log(
-    "🔄 Transferred Patient Data from Previous Page:",
-    initialPatientInfo
-  );
-
   const [patientInfo, setPatientInfo] = useState({
-    ...initialPatientInfo, // Merge existing data
-    medicalHistory: {
-      diabetes: false,
-      hypertension: false,
-      medications: [""],
-      allergies: [""],
-    },
-    visionHistory: { visionType: "Normal", eyewear: "None", injuries: "" },
-    socialHistory: { smoking: "Non-smoker", drinking: "Non-drinker" },
-    familyHistory: { familyHtn: false, familyDm: false },
-    currentSymptoms: {
+    ophthalmologyHistory: {
+      lossOfVision: false,
+      lossOfVisionEye: "",
+      lossOfVisionOnset: "",
+      pain: false,
+      duration: "",
       redness: false,
-      visionIssues: false,
-      headaches: false,
-      dryEyes: false,
-      lightSensitivity: false,
-      prescription: false,
+      rednessEye: "",
+      rednessOnset: "",
+      rednessPain: false,
+      rednessDuration: "",
+      watering: false,
+      wateringEye: "",
+      wateringOnset: "",
+      wateringPain: false,
+      wateringDuration: "",
+      dischargeType: "",
+      itching: false,
+      itchingEye: "",
+      itchingDuration: "",
+      painSymptom: false,
+      painSymptomEye: "",
+      painSymptomOnset: "",
+      painSymptomDuration: "",
     },
-    examinationData: {
-      bloodPressure: "",
-      heartRate: "",
-      oxygenSaturation: "",
-      bloodGlucose: "",
-      bodyTemperature: "",
-      visionScore: "",
-      refractionValues: "",
+    systemicHistory: {
+      hypertension: false,
+      diabetes: false,
+      heartDisease: false,
+    },
+    allergyHistory: {
+      dropsAllergy: false,
+      tabletsAllergy: false,
+      seasonalAllergy: false,
+    },
+    contactLensesHistory: {
+      usesContactLenses: false,
+      usageYears: "",
+      frequency: "",
+    },
+    surgicalHistory: {
+      cataractOrInjury: false,
+      retinalLasers: false,
     },
   });
-
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true
-    );
-    return () => backHandler.remove();
-  }, []);
 
   useEffect(() => {
     const fetchLocalIP = async () => {
       try {
         const ipAddress = await Network.getIpAddressAsync();
-        console.log("📡 Local IP Address:", ipAddress);
         setServerIP(ipAddress);
       } catch (error) {
-        console.error("❌ Error fetching local IP:", error);
         alert("Failed to retrieve server IP.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchLocalIP();
+
+    setPatientInfo((prevState) => ({
+      ...prevState,
+      ophthalmologyHistory: {
+        ...prevState.ophthalmologyHistory,
+        lossOfVisionEye: prevState.ophthalmologyHistory.lossOfVision ? prevState.ophthalmologyHistory.lossOfVisionEye || "Right" : "",
+        lossOfVisionOnset: prevState.ophthalmologyHistory.lossOfVision ? prevState.ophthalmologyHistory.lossOfVisionOnset || "Sudden" : "",
+        duration: prevState.ophthalmologyHistory.lossOfVision ? prevState.ophthalmologyHistory.duration || "<2 Years" : "",
+        
+        rednessEye: prevState.ophthalmologyHistory.redness ? prevState.ophthalmologyHistory.rednessEye || "Right" : "",
+        rednessOnset: prevState.ophthalmologyHistory.redness ? prevState.ophthalmologyHistory.rednessOnset || "Gradual" : "",
+        rednessDuration: prevState.ophthalmologyHistory.redness ? prevState.ophthalmologyHistory.rednessDuration || "<1 Week" : "",
+        
+        wateringEye: prevState.ophthalmologyHistory.watering ? prevState.ophthalmologyHistory.wateringEye || "Right" : "",
+        wateringOnset: prevState.ophthalmologyHistory.watering ? prevState.ophthalmologyHistory.wateringOnset || "Sudden" : "",
+        wateringDuration: prevState.ophthalmologyHistory.watering ? prevState.ophthalmologyHistory.wateringDuration || "<1 Week" : "",
+        dischargeType: prevState.ophthalmologyHistory.watering ? prevState.ophthalmologyHistory.dischargeType || "Clear" : "",
+        
+        itchingEye: prevState.ophthalmologyHistory.itching ? prevState.ophthalmologyHistory.itchingEye || "Right" : "",
+        itchingDuration: prevState.ophthalmologyHistory.itching ? prevState.ophthalmologyHistory.itchingDuration || "<1 Week" : "",
+        
+        painSymptomEye: prevState.ophthalmologyHistory.painSymptom ? prevState.ophthalmologyHistory.painSymptomEye || "Right" : "",
+        painSymptomOnset: prevState.ophthalmologyHistory.painSymptom ? prevState.ophthalmologyHistory.painSymptomOnset || "Sudden" : "",
+        painSymptomDuration: prevState.ophthalmologyHistory.painSymptom ? prevState.ophthalmologyHistory.painSymptomDuration || "<1 Week" : "",
+      },
+      contactLensesHistory: {
+        ...prevState.contactLensesHistory,
+        frequency: prevState.contactLensesHistory.usesContactLenses ? prevState.contactLensesHistory.frequency || "Daily" : "",
+      },
+    }));
   }, []);
 
   const updatePatientInfo = (section, field, value) => {
@@ -108,34 +121,6 @@ const PatientInfoPage = () => {
     }));
   };
 
-  const addNewField = (section, field) => {
-    setPatientInfo((prevState) => ({
-      ...prevState,
-      [section]: {
-        ...prevState[section],
-        [field]: [...prevState[section][field], ""],
-      },
-    }));
-  };
-
-  const updateArrayField = (section, field, index, value) => {
-    const updatedArray = [...patientInfo[section][field]];
-    updatedArray[index] = value;
-    setPatientInfo((prevState) => ({
-      ...prevState,
-      [section]: {
-        ...prevState[section],
-        [field]: updatedArray,
-      },
-    }));
-  };
-
-  const HandleNext = () => {
-    navigation.navigate("MedicalHistory", {
-      patientInfo: JSON.stringify(patientInfo),
-    });
-  };
-
   const handleSubmit = async () => {
     if (!serverIP) {
       alert("Server IP not available. Please try again.");
@@ -143,284 +128,165 @@ const PatientInfoPage = () => {
     }
 
     try {
-      const response = await axios.post(
-        `http://${serverIP}:5001/station-2-patient-info`, // Ensure serverIP is correct
-        patientInfo,
-        {
-          headers: {
-            "Content-Type": "application/json", // Ensure JSON format
-            Accept: "application/json",
-          },
-        }
-      );
+      const response = await axios.post(`http://${serverIP}:5001/submit-station-2`, patientInfo, {
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+      });
+      alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`);
     } catch (error) {
-      console.error(
-        "Error saving patient info:",
-        error.response ? error.response.data : error
-      );
       alert("Failed to save patient information.");
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.flex}
-      >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <ThemedText style={styles.header}>Patient Information</ThemedText>
-
-          <Section
-            title="Medical History"
-            icon={<Thermometer color="#007AFF" size={24} />}
-          >
-            <Checkbox
-              label="Diabetes (DM)"
-              checked={patientInfo.medicalHistory.diabetes}
-              onCheck={(value) =>
-                updatePatientInfo("medicalHistory", "diabetes", value)
-              }
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+          <ThemedText style={styles.header}>Patient Medical History</ThemedText>
+          
+          <Section title="Ophthalmology History" icon={<Eye color="#007AFF" size={24} />}>
+            <FormField
+              label="Loss of Vision"
+              value={patientInfo.ophthalmologyHistory.lossOfVision}
+              onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "lossOfVision", value)}
             />
-            <Checkbox
+            {patientInfo.ophthalmologyHistory.lossOfVision && (
+              <>
+                <Dropdown label="Which Eye" options={["Right", "Left", "Both"]} selectedValue={patientInfo.ophthalmologyHistory.lossOfVisionEye} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "lossOfVisionEye", value)} />
+                <Dropdown label="Onset" options={["Sudden", "Gradual"]} selectedValue={patientInfo.ophthalmologyHistory.lossOfVisionOnset} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "lossOfVisionOnset", value)} />
+                <FormField
+                  label="Pain"
+                  value={patientInfo.ophthalmologyHistory.pain}
+                  onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "pain", value)}
+                />
+                <Dropdown label="Duration" options={["<2 Years", "2-5 Years", "5+ Years"]} selectedValue={patientInfo.ophthalmologyHistory.duration} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "duration", value)} />
+              </>
+            )}
+
+            <FormField
+              label="Redness"
+              value={patientInfo.ophthalmologyHistory.redness}
+              onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "redness", value)}
+            />
+            {patientInfo.ophthalmologyHistory.redness && (
+              <>
+                <Dropdown label="Which Eye" options={["Right", "Left", "Both"]} selectedValue={patientInfo.ophthalmologyHistory.rednessEye} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "rednessEye", value)} />
+                <Dropdown label="Onset" options={["Sudden", "Gradual"]} selectedValue={patientInfo.ophthalmologyHistory.rednessOnset} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "rednessOnset", value)} />
+                <FormField
+                  label="Pain"
+                  value={patientInfo.ophthalmologyHistory.rednessPain}
+                  onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "rednessPain", value)}
+                />
+                <Dropdown label="Duration" options={["<1 Week", "1-4 Weeks", "4+ Weeks"]} selectedValue={patientInfo.ophthalmologyHistory.rednessDuration} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "rednessDuration", value)} />
+              </>
+            )}
+
+            <FormField
+              label="Watering"
+              value={patientInfo.ophthalmologyHistory.watering}
+              onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "watering", value)}
+            />
+            {patientInfo.ophthalmologyHistory.watering && (
+              <>
+                <Dropdown label="Which Eye" options={["Right", "Left", "Both"]} selectedValue={patientInfo.ophthalmologyHistory.wateringEye} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "wateringEye", value)} />
+                <Dropdown label="Onset" options={["Sudden", "Gradual"]} selectedValue={patientInfo.ophthalmologyHistory.wateringOnset } onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "wateringOnset", value)} />
+                <FormField
+                  label="Pain"
+                  value={patientInfo.ophthalmologyHistory.wateringPain}
+                  onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "wateringPain", value)}
+                />
+                <Dropdown label="Duration" options={["<1 Week", "1-4 Weeks", "4+ Weeks"]} selectedValue={patientInfo.ophthalmologyHistory.wateringDuration} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "wateringDuration", value)} />
+                <Dropdown label="Discharge Type" options={["Clear", "Sticky"]} selectedValue={patientInfo.ophthalmologyHistory.dischargeType} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "dischargeType", value)} />
+              </>
+            )}
+
+            <FormField
+              label="Itching"
+              value={patientInfo.ophthalmologyHistory.itching}
+              onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "itching", value)}
+            />
+            {patientInfo.ophthalmologyHistory.itching && (
+              <>
+                <Dropdown label="Which Eye" options={["Right", "Left", "Both"]} selectedValue={patientInfo.ophthalmologyHistory.itchingEye } onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "itchingEye", value)} />
+                <Dropdown label="Duration" options={["<1 Week", "1-4 Weeks", "4+ Weeks"]} selectedValue={patientInfo.ophthalmologyHistory.itchingDuration} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "itchingDuration", value)} />
+              </>
+            )}
+
+            <FormField
+              label="Eye Pain"
+              value={patientInfo.ophthalmologyHistory.painSymptom}
+              onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "painSymptom", value)}
+            />
+            {patientInfo.ophthalmologyHistory.painSymptom && (
+              <>
+                <Dropdown label="Which Eye" options={["Right", "Left", "Both"]} selectedValue={patientInfo.ophthalmologyHistory.painSymptomEye} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "painSymptomEye", value)} />
+                <Dropdown label="Onset" options={["Sudden", "Gradual"]} selectedValue={patientInfo.ophthalmologyHistory.painSymptomOnset} onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "painSymptomOnset", value)} />
+                <Dropdown label="Duration" options={["<1 Week", "1-4 Weeks", "4+ Weeks"]} selectedValue={patientInfo.ophthalmologyHistory.painSymptomDuration } onValueChange={(value) => updatePatientInfo("ophthalmologyHistory", "painSymptomDuration", value)} />
+              </>
+            )}
+          </Section>
+          
+          
+          <Section title="Systemic History" icon={<Activity color="#007AFF" size={24} />}>
+            <FormField
               label="Hypertension (HTN)"
-              checked={patientInfo.medicalHistory.hypertension}
-              onCheck={(value) =>
-                updatePatientInfo("medicalHistory", "hypertension", value)
-              }
+              value={patientInfo.systemicHistory.hypertension}
+              onValueChange={(value) => updatePatientInfo("systemicHistory", "hypertension", value)}
             />
+            <FormField
+                  label="Diabetes (DM)"
+                  value={patientInfo.systemicHistory.diabetes}
+                  onValueChange={(value) => updatePatientInfo("systemicHistory", "diabetes", value)}
+                />
+            <FormField
+                  label="Heart Disease"
+                  value={patientInfo.systemicHistory.heartDisease}
+                  onValueChange={(value) => updatePatientInfo("systemicHistory", "heartDisease", value)}
+                />
+          </Section>
 
-            {patientInfo.medicalHistory.medications.map((med, index) => (
-              <Input
-                key={index}
-                label={`Medication ${index + 1}`}
-                value={med}
-                onChangeText={(text) =>
-                  updateArrayField("medicalHistory", "medications", index, text)
-                }
-              />
-            ))}
-            <AddFieldButton
-              onPress={() => addNewField("medicalHistory", "medications")}
+          <Section title="Allergy History" icon={<Thermometer color="#007AFF" size={24} />}>
+            <FormField
+              label="Allergy to any drops"
+              value={patientInfo.allergyHistory.dropsAllergy}
+              onValueChange={(value) => updatePatientInfo("allergyHistory", "dropsAllergy", value)}
             />
-
-            {patientInfo.medicalHistory.allergies.map((allergy, index) => (
-              <Input
-                key={index}
-                label={`Allergy ${index + 1}`}
-                value={allergy}
-                onChangeText={(text) =>
-                  updateArrayField("medicalHistory", "allergies", index, text)
-                }
-              />
-            ))}
-            <AddFieldButton
-              onPress={() => addNewField("medicalHistory", "allergies")}
+            <FormField
+              label="Allergy to any tablets (antibiotics)"
+              value={patientInfo.allergyHistory.tabletsAllergy}
+              onValueChange={(value) => updatePatientInfo("allergyHistory", "tabletsAllergy", value)}
+            />
+            <FormField
+              label="Seasonal allergies (mostly kids)"
+              value={patientInfo.allergyHistory.seasonalAllergy}
+              onValueChange={(value) => updatePatientInfo("allergyHistory", "seasonalAllergy", value)}
             />
           </Section>
 
-          <Section
-            title="Vision History"
-            icon={<Eye color="#007AFF" size={24} />}
-          >
-            <Dropdown
-              label="Vision Type"
-              options={["Normal", "Farsightedness", "Nearsightedness"]}
-              selectedValue={patientInfo.visionHistory.visionType}
-              onValueChange={(value) =>
-                updatePatientInfo("visionHistory", "visionType", value)
-              }
-              small
+
+          <Section title="Contact Lenses History" icon={<Droplet color="#007AFF" size={24} />}>
+          <FormField
+              label="Do you use contact lenses?"
+              value={patientInfo.contactLensesHistory.usesContactLenses}
+              onValueChange={(value) => updatePatientInfo("contactLensesHistory", "usesContactLenses", value)}
             />
-            <Dropdown
-              label="Eyewear"
-              options={["None", "Glasses", "Contact Lenses", "Both"]}
-              selectedValue={patientInfo.visionHistory.eyewear}
-              onValueChange={(value) =>
-                updatePatientInfo("visionHistory", "eyewear", value)
-              }
-              small
-            />
-            <Input
-              label="Previous Eye Injuries or Surgeries"
-              value={patientInfo.visionHistory.injuries}
-              onChangeText={(text) =>
-                updatePatientInfo("visionHistory", "injuries", text)
-              }
-              multiline
-            />
+            {patientInfo.contactLensesHistory.usesContactLenses && (
+              <>
+                <Input label="How long (in years)" keyboardType="numeric" value={patientInfo.contactLensesHistory.usageYears} onChangeText={(text) => updatePatientInfo("contactLensesHistory", "usageYears", text)} />
+                <Dropdown label="Frequency of Use" options={["Daily", "Non-daily"]} selectedValue={patientInfo.contactLensesHistory.frequency} onValueChange={(value) => updatePatientInfo("contactLensesHistory", "frequency", value)} />
+              </>
+            )}
           </Section>
 
-          <Section
-            title="Social History"
-            icon={<Activity color="#007AFF" size={24} />}
-          >
-            <Dropdown
-              label="Smoking Habits"
-              options={["Non-smoker", "Former smoker", "Current smoker"]}
-              selectedValue={patientInfo.socialHistory.smoking}
-              onValueChange={(value) =>
-                updatePatientInfo("socialHistory", "smoking", value)
-              }
-              small
+          <Section title="Eye Surgical History" icon={<Eye color="#007AFF" size={24} />}>
+          <FormField
+              label="Cataract or Injury"
+              value={patientInfo.surgicalHistory.cataractOrInjury}
+              onValueChange={(value) => updatePatientInfo("surgicalHistory", "cataractOrInjury", value)}
             />
-            <Dropdown
-              label="Drinking Habits"
-              options={["Non-drinker", "Occasional", "Regular", "Heavy"]}
-              selectedValue={patientInfo.socialHistory.drinking}
-              onValueChange={(value) =>
-                updatePatientInfo("socialHistory", "drinking", value)
-              }
-              small
-            />
-          </Section>
-
-          <Section
-            title="Family History"
-            icon={<Droplet color="#007AFF" size={24} />}
-          >
-            <Checkbox
-              label="Family history of Hypertension"
-              checked={patientInfo.familyHistory.familyHtn}
-              onCheck={(value) =>
-                updatePatientInfo("familyHistory", "familyHtn", value)
-              }
-            />
-            <Checkbox
-              label="Family history of Diabetes"
-              checked={patientInfo.familyHistory.familyDm}
-              onCheck={(value) =>
-                updatePatientInfo("familyHistory", "familyDm", value)
-              }
-            />
-          </Section>
-
-          <Section
-            title="Current Eye Symptoms"
-            icon={<Sun color="#007AFF" size={24} />}
-          >
-            <View style={styles.checkboxGrid}>
-              <CheckboxWithIcon
-                label="Redness"
-                checked={patientInfo.currentSymptoms.redness}
-                onCheck={(value) =>
-                  updatePatientInfo("currentSymptoms", "redness", value)
-                }
-                icon={
-                  <View
-                    style={[styles.iconCircle, { backgroundColor: "#FF6B6B" }]}
-                  />
-                }
-              />
-              <CheckboxWithIcon
-                label="Vision Issues"
-                checked={patientInfo.currentSymptoms.visionIssues}
-                onCheck={(value) =>
-                  updatePatientInfo("currentSymptoms", "visionIssues", value)
-                }
-                icon={<Eye color="#4ECDC4" size={20} />}
-              />
-              <CheckboxWithIcon
-                label="Headaches"
-                checked={patientInfo.currentSymptoms.headaches}
-                onCheck={(value) =>
-                  updatePatientInfo("currentSymptoms", "headaches", value)
-                }
-                icon={<Activity color="#FFD93D" size={20} />}
-              />
-              <CheckboxWithIcon
-                label="Dry Eyes or Tearing"
-                checked={patientInfo.currentSymptoms.dryEyes}
-                onCheck={(value) =>
-                  updatePatientInfo("currentSymptoms", "dryEyes", value)
-                }
-                icon={<Droplet color="#6E44FF" size={20} />}
-              />
-              <CheckboxWithIcon
-                label="Light Sensitivity"
-                checked={patientInfo.currentSymptoms.lightSensitivity}
-                onCheck={(value) =>
-                  updatePatientInfo(
-                    "currentSymptoms",
-                    "lightSensitivity",
-                    value
-                  )
-                }
-                icon={<Sun color="#F7B801" size={20} />}
-              />
-              <CheckboxWithIcon
-                label="Prescription Glasses/Lenses"
-                checked={patientInfo.currentSymptoms.prescription}
-                onCheck={(value) =>
-                  updatePatientInfo("currentSymptoms", "prescription", value)
-                }
-                icon={<Eye color="#4ECDC4" size={20} />}
-              />
-            </View>
-          </Section>
-
-          <Section
-            title="Examination Data"
-            icon={<Thermometer color="#007AFF" size={24} />}
-          >
-            <Input
-              label="Blood Pressure (mmHg)"
-              value={patientInfo.examinationData.bloodPressure}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "bloodPressure", text)
-              }
-              placeholder="e.g., 120/80"
-            />
-            <Input
-              label="Heart Rate (bpm)"
-              value={patientInfo.examinationData.heartRate}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "heartRate", text)
-              }
-              keyboardType="numeric"
-            />
-            <Input
-              label="Oxygen Saturation (% SpO₂)"
-              value={patientInfo.examinationData.oxygenSaturation}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "oxygenSaturation", text)
-              }
-              keyboardType="numeric"
-            />
-            <Input
-              label="Blood Glucose (mg/dL)"
-              value={patientInfo.examinationData.bloodGlucose}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "bloodGlucose", text)
-              }
-              keyboardType="numeric"
-            />
-            <Input
-              label="Body Temperature (°C)"
-              value={patientInfo.examinationData.bodyTemperature}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "bodyTemperature", text)
-              }
-              keyboardType="numeric"
-            />
-            <Input
-              label="Vision Score (WHO scale)"
-              value={patientInfo.examinationData.visionScore}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "visionScore", text)
-              }
-              keyboardType="numeric"
-            />
-            <Input
-              label="Refraction Values (OS/OD - Cylindrical)"
-              value={patientInfo.examinationData.refractionValues}
-              onChangeText={(text) =>
-                updatePatientInfo("examinationData", "refractionValues", text)
-              }
+            <FormField
+              label="Retinal Lasers etc"
+              value={patientInfo.surgicalHistory.retinalLasers}
+              onValueChange={(value) => updatePatientInfo("surgicalHistory", "retinalLasers", value)}
             />
           </Section>
 
@@ -445,108 +311,48 @@ const Section = ({ title, children, icon }) => (
   </View>
 );
 
-const AddFieldButton = ({ onPress }) => (
-  <TouchableOpacity style={styles.addButton} onPress={onPress}>
-    <PlusCircle size={24} color="#007AFF" />
-    <ThemedText style={styles.addButtonText}>Add More</ThemedText>
-  </TouchableOpacity>
-);
-
-const CheckboxWithIcon = ({ label, checked, onCheck, icon }) => (
-  <View style={styles.checkboxWithIcon}>
-    <View style={styles.checkboxContainer}>
-      <Checkbox label={label} checked={checked} onCheck={onCheck} />
+const FormField = ({ label, value, onValueChange }) => (
+  <View style={styles.formField}>
+    <ThemedText style={styles.formLabel}>{label}</ThemedText>
+    <View style={styles.switchContainer}>
+      <Text style={[styles.switchLabel, !value && styles.activeSwitchLabel]}>No</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
+        thumbColor={value ? "#3B82F6" : "#F3F4F6"}
+      />
+      <Text style={[styles.switchLabel, value && styles.activeSwitchLabel]}>Yes</Text>
     </View>
-    <View style={styles.iconContainer}>{icon}</View>
   </View>
 );
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#f0f0f0",
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 50,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 24,
-    color: "#007AFF",
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
+  safeArea: { flex: 1, backgroundColor: "#F3F4F6" },
+  flex: { flex: 1 },
+  container: { flex: 1 },
+  contentContainer: { padding: 16, paddingBottom: 50 },
+  header: { fontSize: 28, fontWeight: "bold", textAlign: "center", marginBottom: 24, color: "#1F2937" },
   section: {
     marginBottom: 24,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginLeft: 8,
-    color: "#333",
-  },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 30, // Added bottom margin to avoid overlap
-    alignSelf: "flex-start", // Ensures button stays aligned to the left
-  },
-  addButtonText: {
-    marginLeft: 8,
-    color: "#007AFF",
-    fontSize: 16,
-  },
-  submitButton: {
-    marginTop: 24,
-    marginBottom: 40,
-  },
-  checkboxGrid: {
-    marginBottom: 16,
-  },
-  checkboxWithIcon: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    width: "100%",
-  },
-  checkboxContainer: {
-    flex: 1,
-  },
-  iconContainer: {
-    width: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 15,
-  },
-  iconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-});
+  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: "bold", marginLeft: 8, color: "#1F2937" },
+  formField: { marginBottom: 16 },
+  formLabel: { fontSize: 16, fontWeight: "600", color: "#4B5563", marginBottom: 8 },
+  switchContainer: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end" },
+  switchLabel: { fontSize: 14, color: "#6B7280", marginHorizontal: 8 },
+  activeSwitchLabel: { color: "#3B82F6", fontWeight: "600" },
+  submitButton: { marginTop: 24, marginBottom: 40, backgroundColor: "#3B82F6", borderRadius: 8, paddingVertical: 12 },
+  dropdownContainer: { marginBottom: 16 },
+})
 
 export default PatientInfoPage;

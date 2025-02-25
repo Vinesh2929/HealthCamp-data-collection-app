@@ -170,7 +170,7 @@
 //     marginBottom: 4,
 //   },
 // });
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -180,57 +180,50 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Network from "expo-network";
 
 export default function PatientLookup() {
+  const [serverIP, setServerIP] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [adharNumber, setAdharNumber] = useState("");
   const [patientInfo, setPatientInfo] = useState(null);
   const router = useRouter();
 
-  // 🔹 Hardcoded Patient Data (Replace with API Calls Later)
-  const hardcodedPatients = [
-    {
-      adhar_number: "123456789012",
-      fname: "John",
-      lname: "Doe",
-      age: 45,
-      gender: "Male",
-      village: "Greenwood",
-      phone_num: "9876543210",
-    },
-    {
-      adhar_number: "987654321098",
-      fname: "Jane",
-      lname: "Smith",
-      age: 38,
-      gender: "Female",
-      village: "Sunnyvale",
-      phone_num: "8765432109",
-    },
-    {
-      adhar_number: "555555555555",
-      fname: "Raj",
-      lname: "Kumar",
-      age: 50,
-      gender: "Male",
-      village: "Bluefield",
-      phone_num: "7654321098",
-    },
-  ];
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        setServerIP(ipAddress);
+      } catch (error) {
+        alert("Failed to retrieve server IP.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLocalIP();
+  }, []);
 
-  const fetchPatientInfo = () => {
+  const fetchPatientInfo = async () => {
     if (!adharNumber) {
       Alert.alert("Error", "Please enter an Aadhar number.");
       return;
     }
-
-    // 🔹 Search for the patient in the hardcoded list
-    const foundPatient = hardcodedPatients.find(
-      (patient) => patient.adhar_number === adharNumber
-    );
-
-    if (foundPatient) {
-      setPatientInfo(foundPatient);
-    } else {
+  
+    if (!serverIP) {
+      Alert.alert("Error", "Server IP not available yet. Please try again.");
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://${serverIP}:5001/lookup-patient/${adharNumber}`);
+  
+      if (!response.ok) {
+        throw new Error("Patient not found");
+      }
+  
+      const data = await response.json();
+      setPatientInfo(data);
+    } catch (error) {
       Alert.alert("Not Found", "No patient found with this Aadhar number.");
       setPatientInfo(null);
     }
@@ -272,7 +265,7 @@ export default function PatientLookup() {
             onPress={() =>
               router.push({
                 pathname: "/PatientProgress",
-                params: { adharNumber: patientInfo.adhar_number },
+                params: { adharNumber: adharNumber },
               })
             }
           >
