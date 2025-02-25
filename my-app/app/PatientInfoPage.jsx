@@ -14,7 +14,7 @@ import { Dropdown } from "../components/Dropdown";
 import { Button } from "../components/Button";
 import { ThemedText } from "../components/ThemedText";
 import { BackHandler } from "react-native";
-// import { useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
 import { useRouter } from "expo-router";
 import axios from "axios";
 
@@ -63,10 +63,34 @@ const PatientInfoPage1 = () => {
     }));
   };
 
-  const handleNext = () => {
-    navigation.navigate("PatientInfoPage", {
-      patientInfo: JSON.stringify(patientInfo), // Convert object to string
-    });
+  const handleSubmit = async () => {
+    try {
+      const response = await axios.post(
+        `http://${serverIP}:5001/station-1-patient-info`, // Ensure serverIP is correct
+        patientInfo,
+        {
+          headers: {
+            "Content-Type": "application/json", // Ensure JSON format
+            Accept: "application/json",
+          },
+        }
+      );
+
+      navigation.navigate("MedicalHistory", {
+        patientInfo: JSON.stringify(patientInfo), // Convert object to string
+      });
+
+      console.log("Success:", response.data);
+      alert(
+        `Patient information saved successfully! Patient ID: ${response.data.patient_id}`
+      );
+    } catch (error) {
+      console.error(
+        "Error saving patient info:",
+        error.response ? error.response.data : error
+      );
+      alert("Failed to save patient information.");
+    }
   };
 
   return (
@@ -155,7 +179,7 @@ const PatientInfoPage1 = () => {
 
           <Button
             title="Submit"
-            onPress={handleNext}
+            onPress={handleSubmit}
             style={styles.submitButton}
           />
         </ScrollView>

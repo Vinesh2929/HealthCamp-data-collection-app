@@ -45,7 +45,7 @@ export default function PatientProgress() {
           title="Medical History"
           status={patientProgress.medical}
         />
-        <ProgressCard title="Testing" status={patientProgress.testing} />
+        <ProgressCard title="Vision Testing" status={patientProgress.testing} />
       </View>
 
       {/* Back Button */}

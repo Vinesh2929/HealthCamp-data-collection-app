@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,13 +7,20 @@ import {
   Platform,
   TouchableOpacity,
   SafeAreaView,
-} from "react-native"
-import { Input } from "../components/Input"
-import { Dropdown } from "../components/Dropdown"
-import { Checkbox } from "../components/Checkbox"
-import { Button } from "../components/Button"
-import { ThemedText } from "../components/ThemedText"
-import { PlusCircle, Eye, Activity, Thermometer, Droplet, Sun } from "lucide-react-native"
+} from "react-native";
+import { Input } from "../components/Input";
+import { Dropdown } from "../components/Dropdown";
+import { Checkbox } from "../components/Checkbox";
+import { Button } from "../components/Button";
+import { ThemedText } from "../components/ThemedText";
+import {
+  PlusCircle,
+  Eye,
+  Activity,
+  Thermometer,
+  Droplet,
+  Sun,
+} from "lucide-react-native";
 import { useEffect } from "react";
 import { BackHandler } from "react-native";
 import { useNavigation } from "expo-router";
@@ -21,32 +28,58 @@ import { useLocalSearchParams } from "expo-router";
 import axios from "axios";
 import * as Network from "expo-network";
 
-
 const PatientInfoPage = () => {
   const [serverIP, setServerIP] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const params = useLocalSearchParams();
-  const initialPatientInfo = params.patientInfo ? JSON.parse(params.patientInfo) : {};
+  const initialPatientInfo = params.patientInfo
+    ? JSON.parse(params.patientInfo)
+    : {};
 
   // 🔹 Log received data
-  console.log("🔄 Transferred Patient Data from Previous Page:", initialPatientInfo);
-
+  console.log(
+    "🔄 Transferred Patient Data from Previous Page:",
+    initialPatientInfo
+  );
 
   const [patientInfo, setPatientInfo] = useState({
     ...initialPatientInfo, // Merge existing data
-    medicalHistory: { diabetes: false, hypertension: false, medications: [""], allergies: [""] },
+    medicalHistory: {
+      diabetes: false,
+      hypertension: false,
+      medications: [""],
+      allergies: [""],
+    },
     visionHistory: { visionType: "Normal", eyewear: "None", injuries: "" },
     socialHistory: { smoking: "Non-smoker", drinking: "Non-drinker" },
     familyHistory: { familyHtn: false, familyDm: false },
-    currentSymptoms: { redness: false, visionIssues: false, headaches: false, dryEyes: false, lightSensitivity: false, prescription: false },
-    examinationData: { bloodPressure: "", heartRate: "", oxygenSaturation: "", bloodGlucose: "", bodyTemperature: "", visionScore: "", refractionValues: "" }
+    currentSymptoms: {
+      redness: false,
+      visionIssues: false,
+      headaches: false,
+      dryEyes: false,
+      lightSensitivity: false,
+      prescription: false,
+    },
+    examinationData: {
+      bloodPressure: "",
+      heartRate: "",
+      oxygenSaturation: "",
+      bloodGlucose: "",
+      bodyTemperature: "",
+      visionScore: "",
+      refractionValues: "",
+    },
   });
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true)
-    return () => backHandler.remove()
-  }, [])
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true
+    );
+    return () => backHandler.remove();
+  }, []);
 
   useEffect(() => {
     const fetchLocalIP = async () => {
@@ -72,8 +105,8 @@ const PatientInfoPage = () => {
         ...prevState[section],
         [field]: value,
       },
-    }))
-  }
+    }));
+  };
 
   const addNewField = (section, field) => {
     setPatientInfo((prevState) => ({
@@ -82,50 +115,59 @@ const PatientInfoPage = () => {
         ...prevState[section],
         [field]: [...prevState[section][field], ""],
       },
-    }))
-  }
+    }));
+  };
 
   const updateArrayField = (section, field, index, value) => {
-    const updatedArray = [...patientInfo[section][field]]
-    updatedArray[index] = value
+    const updatedArray = [...patientInfo[section][field]];
+    updatedArray[index] = value;
     setPatientInfo((prevState) => ({
       ...prevState,
       [section]: {
         ...prevState[section],
         [field]: updatedArray,
       },
-    }))
-  }
+    }));
+  };
+
+  const HandleNext = () => {
+    navigation.navigate("MedicalHistory", {
+      patientInfo: JSON.stringify(patientInfo),
+    });
+  };
 
   const handleSubmit = async () => {
     if (!serverIP) {
       alert("Server IP not available. Please try again.");
       return;
     }
-  
+
     try {
       const response = await axios.post(
-        `http://${serverIP}:5001/add-patient`, // Ensure serverIP is correct
+        `http://${serverIP}:5001/station-2-patient-info`, // Ensure serverIP is correct
         patientInfo,
         {
           headers: {
             "Content-Type": "application/json", // Ensure JSON format
-            "Accept": "application/json",
+            Accept: "application/json",
           },
         }
       );
-  
-      console.log("Success:", response.data);
-      alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`);
     } catch (error) {
-      console.error("Error saving patient info:", error.response ? error.response.data : error);
+      console.error(
+        "Error saving patient info:",
+        error.response ? error.response.data : error
+      );
       alert("Failed to save patient information.");
     }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.flex}
+      >
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
@@ -133,16 +175,23 @@ const PatientInfoPage = () => {
         >
           <ThemedText style={styles.header}>Patient Information</ThemedText>
 
-          <Section title="Medical History" icon={<Thermometer color="#007AFF" size={24} />}>
+          <Section
+            title="Medical History"
+            icon={<Thermometer color="#007AFF" size={24} />}
+          >
             <Checkbox
               label="Diabetes (DM)"
               checked={patientInfo.medicalHistory.diabetes}
-              onCheck={(value) => updatePatientInfo("medicalHistory", "diabetes", value)}
+              onCheck={(value) =>
+                updatePatientInfo("medicalHistory", "diabetes", value)
+              }
             />
             <Checkbox
               label="Hypertension (HTN)"
               checked={patientInfo.medicalHistory.hypertension}
-              onCheck={(value) => updatePatientInfo("medicalHistory", "hypertension", value)}
+              onCheck={(value) =>
+                updatePatientInfo("medicalHistory", "hypertension", value)
+              }
             />
 
             {patientInfo.medicalHistory.medications.map((med, index) => (
@@ -150,166 +199,241 @@ const PatientInfoPage = () => {
                 key={index}
                 label={`Medication ${index + 1}`}
                 value={med}
-                onChangeText={(text) => updateArrayField("medicalHistory", "medications", index, text)}
+                onChangeText={(text) =>
+                  updateArrayField("medicalHistory", "medications", index, text)
+                }
               />
             ))}
-            <AddFieldButton onPress={() => addNewField("medicalHistory", "medications")} />
+            <AddFieldButton
+              onPress={() => addNewField("medicalHistory", "medications")}
+            />
 
             {patientInfo.medicalHistory.allergies.map((allergy, index) => (
               <Input
                 key={index}
                 label={`Allergy ${index + 1}`}
                 value={allergy}
-                onChangeText={(text) => updateArrayField("medicalHistory", "allergies", index, text)}
+                onChangeText={(text) =>
+                  updateArrayField("medicalHistory", "allergies", index, text)
+                }
               />
             ))}
-            <AddFieldButton onPress={() => addNewField("medicalHistory", "allergies")} />
+            <AddFieldButton
+              onPress={() => addNewField("medicalHistory", "allergies")}
+            />
           </Section>
 
-          <Section title="Vision History" icon={<Eye color="#007AFF" size={24} />}>
+          <Section
+            title="Vision History"
+            icon={<Eye color="#007AFF" size={24} />}
+          >
             <Dropdown
               label="Vision Type"
               options={["Normal", "Farsightedness", "Nearsightedness"]}
               selectedValue={patientInfo.visionHistory.visionType}
-              onValueChange={(value) => updatePatientInfo("visionHistory", "visionType", value)}
+              onValueChange={(value) =>
+                updatePatientInfo("visionHistory", "visionType", value)
+              }
               small
             />
             <Dropdown
               label="Eyewear"
               options={["None", "Glasses", "Contact Lenses", "Both"]}
               selectedValue={patientInfo.visionHistory.eyewear}
-              onValueChange={(value) => updatePatientInfo("visionHistory", "eyewear", value)}
+              onValueChange={(value) =>
+                updatePatientInfo("visionHistory", "eyewear", value)
+              }
               small
             />
             <Input
               label="Previous Eye Injuries or Surgeries"
               value={patientInfo.visionHistory.injuries}
-              onChangeText={(text) => updatePatientInfo("visionHistory", "injuries", text)}
+              onChangeText={(text) =>
+                updatePatientInfo("visionHistory", "injuries", text)
+              }
               multiline
             />
           </Section>
 
-          <Section title="Social History" icon={<Activity color="#007AFF" size={24} />}>
+          <Section
+            title="Social History"
+            icon={<Activity color="#007AFF" size={24} />}
+          >
             <Dropdown
               label="Smoking Habits"
               options={["Non-smoker", "Former smoker", "Current smoker"]}
               selectedValue={patientInfo.socialHistory.smoking}
-              onValueChange={(value) => updatePatientInfo("socialHistory", "smoking", value)}
+              onValueChange={(value) =>
+                updatePatientInfo("socialHistory", "smoking", value)
+              }
               small
             />
             <Dropdown
               label="Drinking Habits"
               options={["Non-drinker", "Occasional", "Regular", "Heavy"]}
               selectedValue={patientInfo.socialHistory.drinking}
-              onValueChange={(value) => updatePatientInfo("socialHistory", "drinking", value)}
+              onValueChange={(value) =>
+                updatePatientInfo("socialHistory", "drinking", value)
+              }
               small
             />
           </Section>
 
-          <Section title="Family History" icon={<Droplet color="#007AFF" size={24} />}>
+          <Section
+            title="Family History"
+            icon={<Droplet color="#007AFF" size={24} />}
+          >
             <Checkbox
               label="Family history of Hypertension"
               checked={patientInfo.familyHistory.familyHtn}
-              onCheck={(value) => updatePatientInfo("familyHistory", "familyHtn", value)}
+              onCheck={(value) =>
+                updatePatientInfo("familyHistory", "familyHtn", value)
+              }
             />
             <Checkbox
               label="Family history of Diabetes"
               checked={patientInfo.familyHistory.familyDm}
-              onCheck={(value) => updatePatientInfo("familyHistory", "familyDm", value)}
+              onCheck={(value) =>
+                updatePatientInfo("familyHistory", "familyDm", value)
+              }
             />
           </Section>
 
-          <Section title="Current Eye Symptoms" icon={<Sun color="#007AFF" size={24} />}>
+          <Section
+            title="Current Eye Symptoms"
+            icon={<Sun color="#007AFF" size={24} />}
+          >
             <View style={styles.checkboxGrid}>
               <CheckboxWithIcon
                 label="Redness"
                 checked={patientInfo.currentSymptoms.redness}
-                onCheck={(value) => updatePatientInfo("currentSymptoms", "redness", value)}
-                icon={<View style={[styles.iconCircle, { backgroundColor: "#FF6B6B" }]} />}
+                onCheck={(value) =>
+                  updatePatientInfo("currentSymptoms", "redness", value)
+                }
+                icon={
+                  <View
+                    style={[styles.iconCircle, { backgroundColor: "#FF6B6B" }]}
+                  />
+                }
               />
               <CheckboxWithIcon
                 label="Vision Issues"
                 checked={patientInfo.currentSymptoms.visionIssues}
-                onCheck={(value) => updatePatientInfo("currentSymptoms", "visionIssues", value)}
+                onCheck={(value) =>
+                  updatePatientInfo("currentSymptoms", "visionIssues", value)
+                }
                 icon={<Eye color="#4ECDC4" size={20} />}
               />
               <CheckboxWithIcon
                 label="Headaches"
                 checked={patientInfo.currentSymptoms.headaches}
-                onCheck={(value) => updatePatientInfo("currentSymptoms", "headaches", value)}
+                onCheck={(value) =>
+                  updatePatientInfo("currentSymptoms", "headaches", value)
+                }
                 icon={<Activity color="#FFD93D" size={20} />}
               />
               <CheckboxWithIcon
                 label="Dry Eyes or Tearing"
                 checked={patientInfo.currentSymptoms.dryEyes}
-                onCheck={(value) => updatePatientInfo("currentSymptoms", "dryEyes", value)}
+                onCheck={(value) =>
+                  updatePatientInfo("currentSymptoms", "dryEyes", value)
+                }
                 icon={<Droplet color="#6E44FF" size={20} />}
               />
               <CheckboxWithIcon
                 label="Light Sensitivity"
                 checked={patientInfo.currentSymptoms.lightSensitivity}
-                onCheck={(value) => updatePatientInfo("currentSymptoms", "lightSensitivity", value)}
+                onCheck={(value) =>
+                  updatePatientInfo(
+                    "currentSymptoms",
+                    "lightSensitivity",
+                    value
+                  )
+                }
                 icon={<Sun color="#F7B801" size={20} />}
               />
               <CheckboxWithIcon
-              label="Prescription Glasses/Lenses"
-              checked={patientInfo.currentSymptoms.prescription}
-              onCheck={(value) => updatePatientInfo("currentSymptoms", "prescription", value)}
-              icon={<Eye color="#4ECDC4" size={20} />}
-            />
+                label="Prescription Glasses/Lenses"
+                checked={patientInfo.currentSymptoms.prescription}
+                onCheck={(value) =>
+                  updatePatientInfo("currentSymptoms", "prescription", value)
+                }
+                icon={<Eye color="#4ECDC4" size={20} />}
+              />
             </View>
           </Section>
 
-          <Section title="Examination Data" icon={<Thermometer color="#007AFF" size={24} />}>
-          <Input
-            label="Blood Pressure (mmHg)"
-            value={patientInfo.examinationData.bloodPressure}
-            onChangeText={(text) => updatePatientInfo("examinationData", "bloodPressure", text)}
-            placeholder="e.g., 120/80"
-          />
-          <Input
-            label="Heart Rate (bpm)"
-            value={patientInfo.examinationData.heartRate}
-            onChangeText={(text) => updatePatientInfo("examinationData", "heartRate", text)}
-            keyboardType="numeric"
-          />
-          <Input
-            label="Oxygen Saturation (% SpO₂)"
-            value={patientInfo.examinationData.oxygenSaturation}
-            onChangeText={(text) => updatePatientInfo("examinationData", "oxygenSaturation", text)}
-            keyboardType="numeric"
-          />
-          <Input
-            label="Blood Glucose (mg/dL)"
-            value={patientInfo.examinationData.bloodGlucose}
-            onChangeText={(text) => updatePatientInfo("examinationData", "bloodGlucose", text)}
-            keyboardType="numeric"
-          />
-          <Input
-            label="Body Temperature (°C)"
-            value={patientInfo.examinationData.bodyTemperature}
-            onChangeText={(text) => updatePatientInfo("examinationData", "bodyTemperature", text)}
-            keyboardType="numeric"
-          />
+          <Section
+            title="Examination Data"
+            icon={<Thermometer color="#007AFF" size={24} />}
+          >
+            <Input
+              label="Blood Pressure (mmHg)"
+              value={patientInfo.examinationData.bloodPressure}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "bloodPressure", text)
+              }
+              placeholder="e.g., 120/80"
+            />
+            <Input
+              label="Heart Rate (bpm)"
+              value={patientInfo.examinationData.heartRate}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "heartRate", text)
+              }
+              keyboardType="numeric"
+            />
+            <Input
+              label="Oxygen Saturation (% SpO₂)"
+              value={patientInfo.examinationData.oxygenSaturation}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "oxygenSaturation", text)
+              }
+              keyboardType="numeric"
+            />
+            <Input
+              label="Blood Glucose (mg/dL)"
+              value={patientInfo.examinationData.bloodGlucose}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "bloodGlucose", text)
+              }
+              keyboardType="numeric"
+            />
+            <Input
+              label="Body Temperature (°C)"
+              value={patientInfo.examinationData.bodyTemperature}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "bodyTemperature", text)
+              }
+              keyboardType="numeric"
+            />
             <Input
               label="Vision Score (WHO scale)"
               value={patientInfo.examinationData.visionScore}
-              onChangeText={(text) => updatePatientInfo("examinationData", "visionScore", text)}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "visionScore", text)
+              }
               keyboardType="numeric"
             />
             <Input
               label="Refraction Values (OS/OD - Cylindrical)"
               value={patientInfo.examinationData.refractionValues}
-              onChangeText={(text) => updatePatientInfo("examinationData", "refractionValues", text)}
+              onChangeText={(text) =>
+                updatePatientInfo("examinationData", "refractionValues", text)
+              }
             />
           </Section>
 
-          <Button title="Save Patient Information" onPress={handleSubmit} style={styles.submitButton} />
+          <Button
+            title="Save Patient Information"
+            onPress={handleSubmit}
+            style={styles.submitButton}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const Section = ({ title, children, icon }) => (
   <View style={styles.section}>
@@ -319,14 +443,14 @@ const Section = ({ title, children, icon }) => (
     </View>
     {children}
   </View>
-)
+);
 
 const AddFieldButton = ({ onPress }) => (
   <TouchableOpacity style={styles.addButton} onPress={onPress}>
     <PlusCircle size={24} color="#007AFF" />
     <ThemedText style={styles.addButtonText}>Add More</ThemedText>
   </TouchableOpacity>
-)
+);
 
 const CheckboxWithIcon = ({ label, checked, onCheck, icon }) => (
   <View style={styles.checkboxWithIcon}>
@@ -335,7 +459,7 @@ const CheckboxWithIcon = ({ label, checked, onCheck, icon }) => (
     </View>
     <View style={styles.iconContainer}>{icon}</View>
   </View>
-)
+);
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -423,6 +547,6 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
   },
-})
+});
 
-export default PatientInfoPage
+export default PatientInfoPage;

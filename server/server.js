@@ -178,14 +178,13 @@ app.post("/station-1-patient-info", async (req, res) => {
       DOB,
       id,
       phone_num,
-      adhar_number,
     } = req.body;
 
     // Insert Basic Info
     const patientResult = await client.query(
       `INSERT INTO patients 
-      (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num, adhar_number) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+      (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING patient_id`,
       [
         fname,
@@ -199,7 +198,6 @@ app.post("/station-1-patient-info", async (req, res) => {
         DOB,
         id,
         phone_num,
-        adhar_number,
       ]
     );
 
@@ -673,6 +671,230 @@ app.get("/lookup-patient/:adharNumber", async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+// Function to create tables if they don't exist
+async function createTablesIfNeeded() {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Create autorefractor_tests table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS autorefractor_tests (
+        test_id SERIAL PRIMARY KEY,
+        patient_id VARCHAR(255) NOT NULL,
+        eye VARCHAR(10) NOT NULL,
+        sphere VARCHAR(50),
+        cylinder VARCHAR(50),
+        axis VARCHAR(50),
+        pd VARCHAR(50),
+        notes TEXT,
+        staff_id VARCHAR(255) NOT NULL,
+        timestamp TIMESTAMP NOT NULL
+      )
+    `);
+    console.log("✅ autorefractor_tests table created or already exists");
+
+    // Create vision_tests table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vision_tests (
+        test_id SERIAL PRIMARY KEY,
+        patient_id VARCHAR(255) NOT NULL,
+        staff_id VARCHAR(255) NOT NULL,
+        score INTEGER NOT NULL,
+        timestamp TIMESTAMP NOT NULL
+      )
+    `);
+    console.log("✅ vision_tests table created or already exists");
+
+    // Create vision_test_results table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vision_test_results (
+        result_id SERIAL PRIMARY KEY,
+        test_id INTEGER REFERENCES vision_tests(test_id),
+        row_index INTEGER NOT NULL,
+        user_answer VARCHAR(50),
+        is_correct BOOLEAN NOT NULL
+      )
+    `);
+    console.log("✅ vision_test_results table created or already exists");
+
+    await client.query("COMMIT");
+    console.log("✅ All tables created or verified successfully");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("❌ Error creating tables:", error.message);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Call the function to create tables when server starts
+createTablesIfNeeded().catch((err) => {
+  console.error("Failed to create database tables:", err);
+});
+
+// Simplified Autorefractor Test Endpoint for testing
+app.post("/autorefractor-test", (req, res) => {
+  console.log("Received autorefractor data:", req.body);
+  // Echo back the data without database operations
+  res.status(200).json({
+    message: "Autorefractor test data received successfully!",
+    receivedData: req.body,
+  });
+});
+
+// Simplified Vision Test Endpoint for testing
+app.post("/visiontest-test", (req, res) => {
+  console.log("Received vision test data:", req.body);
+  // Echo back the data without database operations
+  res.status(200).json({
+    message: "Vision test data received successfully!",
+    receivedData: req.body,
+  });
+});
+
+// Full Autorefractor Test Endpoint
+app.post("/autorefractor", async (req, res) => {
+  let client;
+  try {
+    console.log("Received autorefractor request:", req.body);
+    client = await pool.connect();
+    await client.query("BEGIN"); // Start transaction
+
+    const {
+      eye,
+      sphere,
+      cylinder,
+      axis,
+      pd,
+      notes,
+      staffId,
+      timestamp,
+      patientId,
+    } = req.body;
+
+    // Validate required fields
+    if (!eye || !staffId || !timestamp) {
+      console.log("❌ Missing required fields:", { eye, staffId, timestamp });
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Insert autorefractor test data
+    const result = await client.query(
+      `INSERT INTO autorefractor_tests 
+      (patient_id, eye, sphere, cylinder, axis, pd, notes, staff_id, timestamp) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      RETURNING test_id`,
+      [patientId, eye, sphere, cylinder, axis, pd, notes, staffId, timestamp]
+    );
+
+    const test_id = result.rows[0].test_id;
+    console.log("✅ Inserted Autorefractor Test ID:", test_id);
+
+    await client.query("COMMIT"); // Commit transaction
+    res.status(201).json({
+      message: "Autorefractor test data saved successfully!",
+      test_id,
+    });
+  } catch (error) {
+    console.error("❌ Error saving autorefractor test data:", error.message);
+
+    // Try to rollback if client is defined and we started a transaction
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("❌ Error during rollback:", rollbackError.message);
+      }
+    }
+
+    res.status(500).json({ error: error.message });
+  } finally {
+    // Release client if it was acquired
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+// Vision Test Endpoint
+app.post("/visiontest", async (req, res) => {
+  let client;
+  try {
+    console.log("Received vision test request:", req.body);
+    client = await pool.connect();
+    await client.query("BEGIN"); // Start transaction
+
+    const { staffId, score, results, timestamp, patientId } = req.body;
+
+    // Validate required fields
+    if (!staffId || !timestamp || !patientId) {
+      console.log("❌ Missing required fields:", {
+        staffId,
+        timestamp,
+        patientId,
+      });
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Insert vision test data
+    const result = await client.query(
+      `INSERT INTO vision_tests 
+      (patient_id, staff_id, score, timestamp) 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING test_id`,
+      [patientId, staffId, score, timestamp]
+    );
+
+    const test_id = result.rows[0].test_id;
+    console.log("✅ Inserted Vision Test ID:", test_id);
+
+    // Insert individual test results
+    if (results && Array.isArray(results)) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result) {
+          await client.query(
+            `INSERT INTO vision_test_results 
+            (test_id, row_index, user_answer, is_correct) 
+            VALUES ($1, $2, $3, $4)`,
+            [test_id, i, result.userAnswer, result.correct]
+          );
+        }
+      }
+    }
+
+    await client.query("COMMIT"); // Commit transaction
+    res.status(201).json({
+      message: "Vision test data saved successfully!",
+      test_id,
+    });
+  } catch (error) {
+    console.error("❌ Error saving vision test data:", error.message);
+
+    // Try to rollback if client is defined and we started a transaction
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("❌ Error during rollback:", rollbackError.message);
+      }
+    }
+
+    res.status(500).json({ error: error.message });
+  } finally {
+    // Release client if it was acquired
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+app.get("/test", (req, res) => {
+  res.json({ message: "Server is working!" });
 });
 
 // Start Server
