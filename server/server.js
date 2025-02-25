@@ -150,7 +150,7 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
 // general function to let the api be set to 0.5 to show that it is in progress
 async function updateStation(patientId, stationColumn) {
   try {
-    const query = `UPDATE "completion.1" SET ${stationColumn} = 0.5 WHERE patient_id = $1;`;
+    const query = `UPDATE "completion1" SET ${stationColumn} = 0.5 WHERE patient_id = $1;`;
     await pool.query(query, [patientId]);
     return { success: true, message: `${stationColumn} updated to 0.5 for patient ${patientId}` };
   } catch (error) {
@@ -191,7 +191,6 @@ app.post("/station-1-patient-info", async (req, res) => {
       date,
       worker_name,
       DOB,
-      id,
       phone_num,
       adhar_number,
     } = req.body;
@@ -199,8 +198,8 @@ app.post("/station-1-patient-info", async (req, res) => {
     // Insert Basic Info
     const patientResult = await client.query(
       `INSERT INTO patients 
-      (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num, adhar_number) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+      (fname, lname, age, gender, address, village, date, worker_name, dob, phone_num, adhar_number) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING patient_id`,
       [
         fname,
@@ -212,7 +211,6 @@ app.post("/station-1-patient-info", async (req, res) => {
         date,
         worker_name,
         DOB,
-        id,
         phone_num,
         adhar_number,
       ]
@@ -221,14 +219,14 @@ app.post("/station-1-patient-info", async (req, res) => {
     const patient_id = patientResult.rows[0].patient_id;
 
     await client.query(
-      `INSERT INTO completion.1 (patient_id) VALUES ($1) 
+      `INSERT INTO completion1 (patient_id) VALUES ($1) 
        ON CONFLICT DO NOTHING`,
       [patient_id]
     );
 
     // Update completion for "station 1"
     await client.query(
-      `UPDATE completion.1 SET "station1" = 1 WHERE patient_id = $1`,
+      `UPDATE completion1 SET "station1" = 1 WHERE patient_id = $1`,
       [patient_id]
     );
 
@@ -265,7 +263,7 @@ app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
 
     // Now, find the completion information for the corresponding patient_id
     const completionResult = await client.query(
-      `SELECT * FROM completion.1 WHERE patient_id = $1`,
+      `SELECT * FROM completion1 WHERE patient_id = $1`,
       [patientId]
     );
 
@@ -450,7 +448,7 @@ app.post("/submit-station-2", async (req, res) => {
     );
 
     await client.query(
-      `UPDATE completion.1 SET "station2" = 1 WHERE patient_id = $1`,
+      `UPDATE completion1 SET "station2" = 1 WHERE patient_id = $1`,
       [patientId]
     );
 

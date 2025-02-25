@@ -36,10 +36,11 @@ export default function PatientProgress() {
         console.log("✅ Completion Data:", data);
 
         setPatientProgress({
-          registration: data["station 1"] ? "Complete" : "Not Done",
-          medical: data["station 2"] ? "Complete" : "Not Done",
-          testing: data["station 3"] ? "Complete" : "Not Done",
-        });
+          registration: Number(data.station1) === 1.0 ? "Complete" : "Not Done",
+          medical: Number(data.station2) === 1.0 ? "Complete" : "Not Done",
+          testing: Number(data.station3) === 1.0 ? "Complete" : "Not Done",
+        });        
+        
       } catch (error) {
         console.error("❌ Error fetching completion data:", error);
         Alert.alert("Not Found", "No completion data found for this Aadhar number.");
