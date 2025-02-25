@@ -221,7 +221,7 @@ app.post("/station-1-patient-info", async (req, res) => {
     const patient_id = patientResult.rows[0].patient_id;
 
     await client.query(
-      `INSERT INTO completion (patient_id) VALUES ($1) 
+      `INSERT INTO completion.1 (patient_id) VALUES ($1) 
        ON CONFLICT DO NOTHING`,
       [patient_id]
     );
