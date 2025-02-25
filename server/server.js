@@ -265,7 +265,7 @@ app.get("/get-completion-by-adhar/:adharNumber", async (req, res) => {
 
     // Now, find the completion information for the corresponding patient_id
     const completionResult = await client.query(
-      `SELECT * FROM completion WHERE patient_id = $1`,
+      `SELECT * FROM completion.1 WHERE patient_id = $1`,
       [patientId]
     );
 
@@ -596,6 +596,7 @@ app.get("/login/nurse", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 app.post("/register/volunteer", async (req, res) => {
   const { first_name, last_name, email, password } = req.body;
 
@@ -631,6 +632,7 @@ app.post("/register/volunteer", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 app.get("/login/volunteer", async (req, res) => {
   const { email, password } = req.body;
 
@@ -670,6 +672,7 @@ app.get("/login/volunteer", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 app.get("/lookup-patient/:adharNumber", async (req, res) => {
   const { adharNumber } = req.params;
   const client = await pool.connect();
