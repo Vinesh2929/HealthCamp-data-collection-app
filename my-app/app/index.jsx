@@ -12,7 +12,11 @@ export default function HomeScreen() {
       <ThemedText style={styles.title}>Welcome to EXPOGO</ThemedText>
 
       {/* Admin Login Button - No navigation */}
-      <Button title="Admin Login" onPress={() => {}} style={styles.button} />
+      <Button
+        title="Admin Login"
+        onPress={() => router.push("/login")}
+        style={styles.button}
+      />
 
       {/* Healthcare Worker Login Button - Navigates to login.tsx */}
       <Button

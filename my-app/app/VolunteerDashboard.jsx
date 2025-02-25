@@ -27,6 +27,16 @@ export default function VolunteerDashboard() {
         onPress={() => router.push("/VisionTest")}
         style={styles.button}
       />
+      <Button
+        title="Medical History"
+        onPress={() => router.push("/MedicalHistory")}
+        style={styles.button}
+      />
+      <Button
+        title="Additional Testing"
+        onPress={() => router.push("/VisionTest")}
+        style={styles.button}
+      />
 
       {/* Navigate to Patient Lookup */}
       <Button

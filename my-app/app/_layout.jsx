@@ -16,6 +16,10 @@ export default function RootLayout() {
         options={{ headerShown: true, title: "Login" }}
       />
       <Stack.Screen
+        name="AdminDashboard"
+        options={{ headerShown: true, title: "Admin Dashboard" }}
+      />
+      <Stack.Screen
         name="PatientInfoPage"
         options={{
           headerShown: false,
@@ -25,8 +29,29 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="volunteerDashboard"
+        name="VolunteerDashboard"
         options={{ headerShown: true, title: "Volunteer Dashboard" }}
+      />
+
+      <Stack.Screen
+        name="NurseDashboard"
+        options={{ headerShown: true, title: "Nurse Dashboard" }}
+      />
+      <Stack.Screen
+        name="PatientLookup"
+        options={{ headerShown: true, title: "Patient Lookup" }}
+      />
+      <Stack.Screen
+        name="PatientProgress"
+        options={{ headerShown: true, title: "Patient Progress" }}
+      />
+      <Stack.Screen
+        name="MedicalHistory"
+        options={{ headerShown: true, title: "Medical History" }}
+      />
+      <Stack.Screen
+        name="VisionTest"
+        options={{ headerShown: true, title: "Vision Test" }}
       />
     </Stack>
   );
