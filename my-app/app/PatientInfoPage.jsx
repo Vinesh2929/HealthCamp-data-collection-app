@@ -8,15 +8,18 @@ import {
   TouchableOpacity,
   Text,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Input } from "../components/Input";
 import { Dropdown } from "../components/Dropdown";
 import { Button } from "../components/Button";
 import { ThemedText } from "../components/ThemedText";
 import { BackHandler } from "react-native";
-import { useNavigation } from "expo-router";
+// import { useNavigation } from "expo-router";
 import { useRouter } from "expo-router";
 import axios from "axios";
+import * as Network from "expo-network";
+
 
 // const PatientInfoPage1 = () => {
 //   const navigation = useNavigation();
@@ -30,6 +33,20 @@ import axios from "axios";
 //   }, []);
 const PatientInfoPage1 = () => {
   const router = useRouter(); // ✅ Use router instead of navigation
+  const [serverIP, setServerIP] = useState(null);
+
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        console.log("📡 Local Device IP:", ipAddress); // Debugging
+        setServerIP(ipAddress);
+      } catch (error) {
+        Alert.alert("Error", "Failed to retrieve server IP.");
+      }
+    };
+    fetchLocalIP();
+  }, []);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -52,7 +69,7 @@ const PatientInfoPage1 = () => {
     date: "",
     worker_name: "",
     DOB: "",
-    id: "",
+    adhar_number: "",
     phone_num: "",
   });
 
@@ -63,33 +80,27 @@ const PatientInfoPage1 = () => {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleNext = async () => {
+    if (!serverIP) {
+      Alert.alert("Error", "Server IP is not available. Please try again.");
+      return;
+    }
+  
     try {
       const response = await axios.post(
-        `http://${serverIP}:5001/station-1-patient-info`, // Ensure serverIP is correct
+        `http://${serverIP}:5001/station-1-patient-info`,
         patientInfo,
         {
-          headers: {
-            "Content-Type": "application/json", // Ensure JSON format
-            Accept: "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         }
       );
-
-      navigation.navigate("MedicalHistory", {
-        patientInfo: JSON.stringify(patientInfo), // Convert object to string
-      });
-
-      console.log("Success:", response.data);
-      alert(
-        `Patient information saved successfully! Patient ID: ${response.data.patient_id}`
-      );
+  
+      console.log("✅ Patient data saved:", response.data);
+  
+      Alert.alert("Success", "Patient data saved!");
     } catch (error) {
-      console.error(
-        "Error saving patient info:",
-        error.response ? error.response.data : error
-      );
-      alert("Failed to save patient information.");
+      console.error("❌ API Error:", error);
+      Alert.alert("Error", "Failed to save patient data.");
     }
   };
 
@@ -165,9 +176,9 @@ const PatientInfoPage1 = () => {
               onChangeText={(text) => updatePatientInfo("DOB", text)}
             />
             <Input
-              label="ID"
+              label="ID (Aadhar Number)"
               value={patientInfo.id}
-              onChangeText={(text) => updatePatientInfo("id", text)}
+              onChangeText={(text) => updatePatientInfo("adhar_number", text)}
             />
             <Input
               label="Phone Number"
@@ -179,7 +190,7 @@ const PatientInfoPage1 = () => {
 
           <Button
             title="Submit"
-            onPress={handleSubmit}
+            onPress={handleNext}
             style={styles.submitButton}
           />
         </ScrollView>
