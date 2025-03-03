@@ -1,75 +1,16 @@
 import React, { useState } from "react";
 import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Picker,
+  StyleSheet,
+  Picker
 } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
-import styled from "styled-components/native";
-
-// Styled Components for CSS
-const Container = styled.View`
-  flex: 1;
-  justify-content: center;
-  padding: 20px;
-`;
-
-const FormContainer = styled.View`
-  padding: 20px;
-  border-radius: 10px;
-  width: 100%;
-  max-width: 400px;
-  align-self: center;
-`;
-
-const Title = styled.Text`
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 24px;
-  text-align: center;
-`;
-
-const Input = styled.TextInput`
-  height: 50px;
-  border-width: 1px;
-  border-color: #ddd;
-  border-radius: 8px;
-  padding-horizontal: 16px;
-  margin-bottom: 16px;
-  font-size: 16px;
-  background-color: white;
-`;
-
-const Select = styled(Picker)`
-  height: 50px;
-  margin-bottom: 16px;
-  background-color: white;
-`;
-
-const Button = styled.TouchableOpacity`
-  background-color: #2196f3;
-  padding: 16px;
-  border-radius: 8px;
-  align-items: center;
-  margin-top: 8px;
-`;
-
-const ButtonText = styled.Text`
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-`;
-
-const RegisterLink = styled.TouchableOpacity`
-  margin-top: 16px;
-  align-items: center;
-`;
-
-const LinkText = styled.Text`
-  color: #2196f3;
-  font-size: 14px;
-`;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -83,18 +24,18 @@ export default function LoginScreen() {
       Alert.alert("Error", "Please enter your credentials.");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const response = await axios.post("http://localhost:5001/login", {
         email,
         password,
         role: selectedRole,
       });
-  
+
       const { user_id, token } = response.data;
-  
+
       // Redirect based on role
       if (selectedRole === "volunteer") {
         router.replace("/VolunteerDashboard");
@@ -106,17 +47,17 @@ export default function LoginScreen() {
     } catch (error) {
       Alert.alert("Login Failed", "Invalid credentials or server error.");
     }
-  
+
     setLoading(false);
   };
-  
 
   return (
-    <Container>
-      <FormContainer>
-        <Title>Login</Title>
+    <View style={styles.container}>
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>Login</Text>
 
-        <Input
+        <TextInput
+          style={styles.input}
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
@@ -124,7 +65,8 @@ export default function LoginScreen() {
           autoCapitalize="none"
         />
 
-        <Input
+        <TextInput
+          style={styles.input}
           placeholder="Password"
           value={password}
           onChangeText={setPassword}
@@ -133,27 +75,100 @@ export default function LoginScreen() {
         />
 
         {/* Role Selection Dropdown */}
-        <Select
+        <Picker
           selectedValue={selectedRole}
           onValueChange={(itemValue) => setSelectedRole(itemValue)}
+          style={styles.picker}
         >
           <Picker.Item label="Volunteer" value="volunteer" />
           <Picker.Item label="Practitioner" value="practitioner" />
           <Picker.Item label="Admin" value="admin" />
-        </Select>
+        </Picker>
 
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" />
         ) : (
-          <Button onPress={handleLogin}>
-            <ButtonText>Login</ButtonText>
-          </Button>
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
         )}
 
-        <RegisterLink onPress={() => router.push("/register")}>
-          <LinkText>New user? Register here</LinkText>
-        </RegisterLink>
-      </FormContainer>
-    </Container>
+        <TouchableOpacity style={styles.registerLink} onPress={() => router.push("/register")}>
+          <Text style={styles.linkText}>New user? Register here</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
+
+// ✅ StyleSheet for all styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#f4f4f4",
+  },
+  formContainer: {
+    backgroundColor: "white",
+    padding: 30,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
+    textAlign: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 24,
+    textAlign: "center",
+    color: "#333",
+  },
+  input: {
+    width: "100%",
+    padding: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    fontSize: 16,
+    backgroundColor: "white",
+  },
+  picker: {
+    width: "100%",
+    height: 50,
+    marginBottom: 16,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+  },
+  button: {
+    backgroundColor: "#2196F3",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  registerLink: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  linkText: {
+    color: "#2196F3",
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
+});
+
