@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Picker, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
+
 import axios from "axios";
 import { useRouter } from "expo-router";
 
@@ -40,13 +48,20 @@ export default function RegisterScreen() {
       };
 
       // Register user
-      const response = await axios.post("http://localhost:5001/register", userData);
+      const response = await axios.post(
+        "http://localhost:5001/register",
+        userData
+      );
       const userId = response.data.user_id;
 
       // Update role to 0.5 in the users table
-      await axios.put(`http://localhost:5001/update-role-progress/${userId}/${formData.role}`);
+      await axios.put(
+        `http://localhost:5001/update-role-progress/${userId}/${formData.role}`
+      );
 
-      setMessage(`Registration successful! Your ${formData.role} role is now in progress.`);
+      setMessage(
+        `Registration successful! Your ${formData.role} role is now in progress.`
+      );
       setIsSuccess(true);
     } catch (err) {
       setMessage("Registration failed. Please try again.");
@@ -66,7 +81,13 @@ export default function RegisterScreen() {
       <View style={styles.formContainer}>
         <Text style={styles.title}>User Registration</Text>
 
-        {message ? <Text style={[styles.message, isSuccess ? styles.success : styles.error]}>{message}</Text> : null}
+        {message ? (
+          <Text
+            style={[styles.message, isSuccess ? styles.success : styles.error]}
+          >
+            {message}
+          </Text>
+        ) : null}
 
         <TextInput
           style={styles.input}
@@ -121,7 +142,10 @@ export default function RegisterScreen() {
           <Text style={styles.buttonText}>Register</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/login")} style={styles.link}>
+        <TouchableOpacity
+          onPress={() => router.push("/login")}
+          style={styles.link}
+        >
           <Text style={styles.linkText}>Already registered? Login here</Text>
         </TouchableOpacity>
       </View>
@@ -209,4 +233,3 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
-

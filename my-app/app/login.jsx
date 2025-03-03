@@ -7,8 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
-  Picker
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import axios from "axios";
 
@@ -45,7 +45,7 @@ export default function LoginScreen() {
         router.replace("/AdminDashboard");
       }
     } catch (error) {
-      Alert.alert("Login Failed", "Invalid credentials or server error.");
+      Alert.alert("Wait for Admin Authorization to Login");
     }
 
     setLoading(false);
@@ -75,15 +75,17 @@ export default function LoginScreen() {
         />
 
         {/* Role Selection Dropdown */}
-        <Picker
-          selectedValue={selectedRole}
-          onValueChange={(itemValue) => setSelectedRole(itemValue)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Volunteer" value="volunteer" />
-          <Picker.Item label="Practitioner" value="practitioner" />
-          <Picker.Item label="Admin" value="admin" />
-        </Picker>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedRole}
+            onValueChange={(itemValue) => setSelectedRole(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Volunteer" value="volunteer" />
+            <Picker.Item label="Practitioner" value="practitioner" />
+            <Picker.Item label="Admin" value="admin" />
+          </Picker>
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" />
@@ -93,7 +95,10 @@ export default function LoginScreen() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.registerLink} onPress={() => router.push("/register")}>
+        <TouchableOpacity
+          style={styles.registerLink}
+          onPress={() => router.push("/register")}
+        >
           <Text style={styles.linkText}>New user? Register here</Text>
         </TouchableOpacity>
       </View>
@@ -142,12 +147,15 @@ const styles = StyleSheet.create({
   },
   picker: {
     width: "100%",
-    height: 50,
-    marginBottom: 16,
-    backgroundColor: "white",
+    height: 200,
+    color: "#000",
+  },
+  pickerContainer: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#ccc",
     borderRadius: 5,
+    marginBottom: 5,
+    paddingHorizontal: 5,
   },
   button: {
     backgroundColor: "#2196F3",
@@ -171,4 +179,3 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
-
