@@ -52,7 +52,12 @@ export default function RegisterScreen() {
         "http://localhost:5001/register",
         userData
       );
-      const userId = response.data.user_id;
+      const userId = response.data.nurse_id;
+      if (!userId) {
+        setMessage("Error: User ID not received from server.");
+        setIsSuccess(false);
+        return;
+      }
 
       // Update role to 0.5 in the users table
       await axios.put(

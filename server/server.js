@@ -354,16 +354,43 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
 
 app.post("/submit-station-2", async (req, res) => {
   const client = await pool.connect();
-  const patientId = 1901; // HARD-CODED Patient ID (replace this later)
 
   try {
     const {
+      patient_id,
       ophthalmologyHistory,
       systemicHistory,
       allergyHistory,
       contactLensesHistory,
       surgicalHistory,
     } = req.body;
+
+    console.log("📥 Received Patient ID:", patient_id);
+
+    if (!patient_id) {
+      console.error("❌ Error: Missing patient ID in request.");
+      return res.status(400).json({ error: "Patient ID is required." });
+    }
+
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      console.error("❌ Error: Patient ID does not exist in the patients table.");
+      return res.status(400).json({ error: "Invalid patient ID, patient not found." });
+    }
+
+    const duplicateCheck = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      console.warn("⚠️ Duplicate Submission Attempted.");
+      return res.status(400).json({ error: "Form has already been submitted for this patient." });
+    }
 
     // Begin Transaction
     await client.query("BEGIN");
@@ -373,7 +400,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO ophthalmology_history (patient_id, loss_of_vision, loss_of_vision_eye, loss_of_vision_onset, pain, duration, redness, redness_eye, redness_onset, redness_pain, redness_duration, watering, watering_eye, watering_onset, watering_pain, watering_duration, discharge_type, itching, itching_eye, itching_duration, pain_symptom, pain_symptom_eye, pain_symptom_onset, pain_symptom_duration) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
       [
-        patientId,
+        patient_id,
         ophthalmologyHistory.lossOfVision,
         ophthalmologyHistory.lossOfVisionEye,
         ophthalmologyHistory.lossOfVisionOnset,
@@ -405,7 +432,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO systemic_history (patient_id, hypertension, diabetes, heart_disease) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         systemicHistory.hypertension,
         systemicHistory.diabetes,
         systemicHistory.heartDisease,
@@ -417,7 +444,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO allergy_history (patient_id, drops_allergy, tablets_allergy, seasonal_allergy) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         allergyHistory.dropsAllergy,
         allergyHistory.tabletsAllergy,
         allergyHistory.seasonalAllergy,
@@ -429,7 +456,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO contact_lenses_history (patient_id, uses_contact_lenses, usage_years, frequency) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         contactLensesHistory.usesContactLenses,
         contactLensesHistory.usageYears || null,
         contactLensesHistory.frequency,
@@ -441,15 +468,22 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO surgical_history (patient_id, cataract_or_injury, retinal_lasers) 
       VALUES ($1, $2, $3)`,
       [
-        patientId,
+        patient_id,
         surgicalHistory.cataractOrInjury,
         surgicalHistory.retinalLasers,
       ]
     );
 
     await client.query(
-      `UPDATE completion1 SET "station2" = 1 WHERE patient_id = $1`,
-      [patientId]
+      `INSERT INTO completion1 (patient_id) VALUES ($1) 
+       ON CONFLICT (patient_id) DO NOTHING`,
+      [patient_id]
+    );
+
+    // 🔹 Mark Station 2 as "Complete"
+    await client.query(
+      `UPDATE completion1 SET station2 = 1 WHERE patient_id = $1`,
+      [patient_id]
     );
 
     // Commit Transaction
@@ -659,6 +693,114 @@ app.put("/update-role-progress/:user_id/:role", async (req, res) => {
   } catch (error) {
     console.error("❌ Error updating role progress:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/get-patient-info/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { adharNumber } = req.params;
+
+    const result = await client.query(
+      `SELECT fname, lname, age, gender, address, village, date, worker_name, dob, phone_num, adhar_number FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({error: "Patient not found"});
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching patient data", error);
+    res.status(500).json({ error: error.message});
+  } finally {
+    client.release();
+  }
+})
+
+app.get("/get-patient-id/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+  const { adharNumber } = req.params;
+
+  try {
+    const result = await client.query(
+      `SELECT patient_id FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+
+    res.status(200).json({ patient_id: result.rows[0].patient_id });
+  } catch (error) {
+    console.error("❌ Error fetching patient ID:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+
+app.get("/get-patient-history/:patient_id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { patient_id } = req.params;
+
+    // ✅ Check if patient exists
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found." });
+    }
+
+    // ✅ Retrieve data from all tables
+    const ophthalmologyHistory = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const systemicHistory = await client.query(
+      `SELECT * FROM systemic_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const allergyHistory = await client.query(
+      `SELECT * FROM allergy_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const contactLensesHistory = await client.query(
+      `SELECT * FROM contact_lenses_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const surgicalHistory = await client.query(
+      `SELECT * FROM surgical_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    // ✅ Check if history exists (otherwise return empty defaults)
+    const patientHistory = {
+      ophthalmologyHistory: ophthalmologyHistory.rows[0] || {},
+      systemicHistory: systemicHistory.rows[0] || {},
+      allergyHistory: allergyHistory.rows[0] || {},
+      contactLensesHistory: contactLensesHistory.rows[0] || {},
+      surgicalHistory: surgicalHistory.rows[0] || {},
+    };
+
+    res.status(200).json(patientHistory);
+
+  } catch (error) {
+    console.error("❌ Error fetching patient history:", error);
+    res.status(500).json({ error: "Failed to retrieve patient history." });
+  } finally {
+    client.release();
   }
 });
 
