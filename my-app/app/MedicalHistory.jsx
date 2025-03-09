@@ -290,7 +290,11 @@ const PatientInfoPage = () => {
             />
           </Section>
 
-          <Button title="Save Patient Information" onPress={handleSubmit} style={styles.submitButton} />
+          <Button
+            title="Save Patient Information"
+            onPress={handleSubmit}
+            style={styles.submitButton}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -305,7 +309,7 @@ const Section = ({ title, children, icon }) => (
     </View>
     {children}
   </View>
-)
+);
 
 const FormField = ({ label, value, onValueChange }) => (
   <View style={styles.formField}>
@@ -321,7 +325,7 @@ const FormField = ({ label, value, onValueChange }) => (
       <Text style={[styles.switchLabel, value && styles.activeSwitchLabel]}>Yes</Text>
     </View>
   </View>
-)
+);
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F3F4F6" },
