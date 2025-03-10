@@ -4,18 +4,18 @@ FROM node:18
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json first
-COPY package*.json ./
+# Copy package.json and package-lock.json (for caching)
+COPY server/package*.json ./server/
 
-# Install dependencies
-WORKDIR /app/server
+# Install backend dependencies
 RUN npm install
 
-# Copy the rest of the application files
+# Copy the entire project (frontend + backend)
 COPY . .
 
-# Expose the port the app runs on
+# Expose port 8080 for Cloud Run
 EXPOSE 8080
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the backend
+CMD ["node", "server/server.js"]
+
