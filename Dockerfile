@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
+WORKDIR /app/server
 RUN npm install
 
 # Copy the rest of the application files
@@ -17,4 +18,4 @@ COPY . .
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "index.js"]
+CMD ["node", "server.js"]
