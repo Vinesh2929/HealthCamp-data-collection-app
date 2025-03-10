@@ -5,7 +5,7 @@ FROM node:18
 WORKDIR /app
 
 # Copy package.json and package-lock.json (for caching)
-COPY server/package*.json ./server/
+COPY server/package*.json ./ 
 
 # Install backend dependencies
 RUN npm install
