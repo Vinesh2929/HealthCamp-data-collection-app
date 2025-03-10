@@ -1,14 +1,20 @@
-# Use Dart runtime
-FROM dart:stable
+# Use Node.js as the base image
+FROM node:18
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# Copy package.json and package-lock.json first
+COPY package*.json ./
 
 # Install dependencies
-RUN dart pub get
+RUN npm install
 
-# Start the server
-CMD ["dart", "bin/server.dart"]
+# Copy the rest of the application files
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Start the application
+CMD ["npm", "start"]
