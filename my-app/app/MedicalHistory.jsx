@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Switch,
   Text,
+  Alert,
 } from "react-native";
 import { Input } from "../components/Input";
 import { Dropdown } from "../components/Dropdown";
@@ -16,8 +17,12 @@ import { ThemedText } from "../components/ThemedText";
 import { Eye, Activity, Thermometer, Droplet, Sun } from "lucide-react-native";
 import axios from "axios";
 import * as Network from "expo-network";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 const PatientInfoPage = () => {
+  const router = useRouter();
+  const { adharNumber } = useLocalSearchParams();
+  const [patientID, setPatientID] = useState(null);
   const [serverIP, setServerIP] = useState(null);
   const [loading, setLoading] = useState(true);
   const [patientInfo, setPatientInfo] = useState({
@@ -121,21 +126,133 @@ const PatientInfoPage = () => {
     }));
   };
 
+  useEffect(() => {
+    const fetchPatientID = async () => {
+      if (!serverIP || !adharNumber) return; // Don't proceed if required values are missing
+    
+      try {
+        const response = await axios.get(`http://${serverIP}:5001/get-patient-id/${adharNumber}`);
+  
+        if (response.status === 200 && response.data.patient_id) {
+          console.log("✅ Patient ID Retrieved:", response.data.patient_id);
+          setPatientID(response.data.patient_id);
+        } else {
+          console.warn("❌ No patient found or invalid response.");
+        }
+      } catch (error) {
+        console.error("❌ Error fetching patient ID:", error);
+        Alert.alert("Error", "Failed to retrieve patient ID.");
+      }
+    };
+  
+    if (serverIP) {
+      fetchPatientID();
+    }
+  }, [serverIP, adharNumber]);
+
+  useEffect(() => {
+    const fetchPatientHistory = async () => {
+      if (!serverIP || !patientID) return;
+  
+      try {
+        const response = await axios.get(`http://${serverIP}:5001/get-patient-history/${patientID}`);
+        if (response.status === 200) {
+          console.log("✅ Patient History Retrieved:", response.data);
+          
+          // 🔹 Convert snake_case keys to camelCase
+          const transformData = (data) => {
+            return {
+              ophthalmologyHistory: {
+                lossOfVision: data.ophthalmologyHistory.loss_of_vision || false,
+                lossOfVisionEye: data.ophthalmologyHistory.loss_of_vision_eye || "",
+                lossOfVisionOnset: data.ophthalmologyHistory.loss_of_vision_onset || "",
+                pain: data.ophthalmologyHistory.pain || false,
+                duration: data.ophthalmologyHistory.duration || "",
+                
+                redness: data.ophthalmologyHistory.redness || false,
+                rednessEye: data.ophthalmologyHistory.redness_eye || "",
+                rednessOnset: data.ophthalmologyHistory.redness_onset || "",
+                rednessPain: data.ophthalmologyHistory.redness_pain || false,
+                rednessDuration: data.ophthalmologyHistory.redness_duration || "",
+                
+                watering: data.ophthalmologyHistory.watering || false,
+                wateringEye: data.ophthalmologyHistory.watering_eye || "",
+                wateringOnset: data.ophthalmologyHistory.watering_onset || "",
+                wateringPain: data.ophthalmologyHistory.watering_pain || false,
+                wateringDuration: data.ophthalmologyHistory.watering_duration || "",
+                dischargeType: data.ophthalmologyHistory.discharge_type || "",
+                
+                itching: data.ophthalmologyHistory.itching || false,
+                itchingEye: data.ophthalmologyHistory.itching_eye || "",
+                itchingDuration: data.ophthalmologyHistory.itching_duration || "",
+                
+                painSymptom: data.ophthalmologyHistory.pain_symptom || false,
+                painSymptomEye: data.ophthalmologyHistory.pain_symptom_eye || "",
+                painSymptomOnset: data.ophthalmologyHistory.pain_symptom_onset || "",
+                painSymptomDuration: data.ophthalmologyHistory.pain_symptom_duration || "",
+              },
+              systemicHistory: {
+                hypertension: data.systemicHistory.hypertension || false,
+                diabetes: data.systemicHistory.diabetes || false,
+                heartDisease: data.systemicHistory.heart_disease || false,
+              },
+              allergyHistory: {
+                dropsAllergy: data.allergyHistory.drops_allergy || false,
+                tabletsAllergy: data.allergyHistory.tablets_allergy || false,
+                seasonalAllergy: data.allergyHistory.seasonal_allergy || false,
+              },
+              contactLensesHistory: {
+                usesContactLenses: data.contactLensesHistory.uses_contact_lenses || false,
+                usageYears: data.contactLensesHistory.usage_years || "",
+                frequency: data.contactLensesHistory.frequency || "",
+              },
+              surgicalHistory: {
+                cataractOrInjury: data.surgicalHistory.cataract_or_injury || false,
+                retinalLasers: data.surgicalHistory.retinal_lasers || false,
+              },
+            };
+          };
+  
+          // 🔹 Update state with transformed data
+          setPatientInfo(transformData(response.data));
+        } else {
+          console.warn("⚠️ No medical history found, form remains empty.");
+        }
+      } catch (error) {
+        console.error("❌ Error fetching patient history:", error);
+      }
+    };
+  
+    if (serverIP && patientID) {
+      fetchPatientHistory();
+    }
+  }, [serverIP, patientID]);
+
+
   const handleSubmit = async () => {
-    if (!serverIP) {
-      alert("Server IP not available. Please try again.");
+    if (!serverIP || !patientID) {
+      alert("Server IP or patient ID not available. Please try again.");
       return;
     }
 
     try {
-      const response = await axios.post(`http://${serverIP}:5001/submit-station-2`, patientInfo, {
+      const response = await axios.post(`http://${serverIP}:5001/submit-station-2`, { patient_id: patientID, ...patientInfo }, {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
       });
-      alert(`Patient information saved successfully! Patient ID: ${response.data.patient_id}`);
+  
+      if (response.status === 200) {
+        Alert.alert("Success", "Patient information saved successfully!", [
+          { text: "OK", onPress: () => router.replace(`/PatientProgress?adharNumber=${adharNumber}`) },
+        ]);
+      }
     } catch (error) {
       alert("Failed to save patient information.");
     }
   };
+
+  if (loading) {
+    return <Text>Loading...</Text>;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -290,7 +407,11 @@ const PatientInfoPage = () => {
             />
           </Section>
 
-          <Button title="Save Patient Information" onPress={handleSubmit} style={styles.submitButton} />
+          <Button
+            title="Save Patient Information"
+            onPress={handleSubmit}
+            style={styles.submitButton}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -305,7 +426,7 @@ const Section = ({ title, children, icon }) => (
     </View>
     {children}
   </View>
-)
+);
 
 const FormField = ({ label, value, onValueChange }) => (
   <View style={styles.formField}>
@@ -321,7 +442,7 @@ const FormField = ({ label, value, onValueChange }) => (
       <Text style={[styles.switchLabel, value && styles.activeSwitchLabel]}>Yes</Text>
     </View>
   </View>
-)
+);
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F3F4F6" },

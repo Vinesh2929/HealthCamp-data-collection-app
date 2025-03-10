@@ -9,19 +9,21 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ThemedText style={styles.title}>Welcome to EXPOGO</ThemedText>
+      <ThemedText style={styles.title}>
+        Welcome to HealthCare Camp Data Collection Mobile App
+      </ThemedText>
 
       {/* Admin Login Button - No navigation */}
       <Button
-        title="Admin Login"
+        title="Login"
         onPress={() => router.push("/login")}
         style={styles.button}
       />
 
       {/* Healthcare Worker Login Button - Navigates to login.tsx */}
       <Button
-        title="Healthcare Worker Login"
-        onPress={() => router.push("/login")}
+        title="Register"
+        onPress={() => router.push("/register")}
         style={styles.button}
       />
     </View>

@@ -354,16 +354,43 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
 
 app.post("/submit-station-2", async (req, res) => {
   const client = await pool.connect();
-  const patientId = 1901; // HARD-CODED Patient ID (replace this later)
 
   try {
     const {
+      patient_id,
       ophthalmologyHistory,
       systemicHistory,
       allergyHistory,
       contactLensesHistory,
       surgicalHistory,
     } = req.body;
+
+    console.log("📥 Received Patient ID:", patient_id);
+
+    if (!patient_id) {
+      console.error("❌ Error: Missing patient ID in request.");
+      return res.status(400).json({ error: "Patient ID is required." });
+    }
+
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      console.error("❌ Error: Patient ID does not exist in the patients table.");
+      return res.status(400).json({ error: "Invalid patient ID, patient not found." });
+    }
+
+    const duplicateCheck = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      console.warn("⚠️ Duplicate Submission Attempted.");
+      return res.status(400).json({ error: "Form has already been submitted for this patient." });
+    }
 
     // Begin Transaction
     await client.query("BEGIN");
@@ -373,7 +400,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO ophthalmology_history (patient_id, loss_of_vision, loss_of_vision_eye, loss_of_vision_onset, pain, duration, redness, redness_eye, redness_onset, redness_pain, redness_duration, watering, watering_eye, watering_onset, watering_pain, watering_duration, discharge_type, itching, itching_eye, itching_duration, pain_symptom, pain_symptom_eye, pain_symptom_onset, pain_symptom_duration) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
       [
-        patientId,
+        patient_id,
         ophthalmologyHistory.lossOfVision,
         ophthalmologyHistory.lossOfVisionEye,
         ophthalmologyHistory.lossOfVisionOnset,
@@ -405,7 +432,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO systemic_history (patient_id, hypertension, diabetes, heart_disease) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         systemicHistory.hypertension,
         systemicHistory.diabetes,
         systemicHistory.heartDisease,
@@ -417,7 +444,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO allergy_history (patient_id, drops_allergy, tablets_allergy, seasonal_allergy) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         allergyHistory.dropsAllergy,
         allergyHistory.tabletsAllergy,
         allergyHistory.seasonalAllergy,
@@ -429,7 +456,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO contact_lenses_history (patient_id, uses_contact_lenses, usage_years, frequency) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         contactLensesHistory.usesContactLenses,
         contactLensesHistory.usageYears || null,
         contactLensesHistory.frequency,
@@ -441,15 +468,22 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO surgical_history (patient_id, cataract_or_injury, retinal_lasers) 
       VALUES ($1, $2, $3)`,
       [
-        patientId,
+        patient_id,
         surgicalHistory.cataractOrInjury,
         surgicalHistory.retinalLasers,
       ]
     );
 
     await client.query(
-      `UPDATE completion1 SET "station2" = 1 WHERE patient_id = $1`,
-      [patientId]
+      `INSERT INTO completion1 (patient_id) VALUES ($1) 
+       ON CONFLICT (patient_id) DO NOTHING`,
+      [patient_id]
+    );
+
+    // 🔹 Mark Station 2 as "Complete"
+    await client.query(
+      `UPDATE completion1 SET station2 = 1 WHERE patient_id = $1`,
+      [patient_id]
     );
 
     // Commit Transaction
@@ -462,212 +496,6 @@ app.post("/submit-station-2", async (req, res) => {
     res.status(500).json({ error: "Failed to store patient data" });
   } finally {
     client.release();
-  }
-});
-
-
-// Nurse Registration API
-// changed it so that the nurse_id is connected to the user id and that will be used to login
-/*app.post("/register", async (req, res) => {
-  const { first_name, last_name, email, password } = req.body;
-
-  try {
-    // 🔹 Check if email already exists
-    const emailCheck = await pool.query(
-      "SELECT * FROM nurses WHERE email = $1",
-      [email]
-    );
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert nurse into the database (Auto-generated nurse_id starts at 2222)
-    const result = await pool.query(
-      `INSERT INTO nurses (first_name, last_name, email, password) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING nurse_id`,
-      [first_name, last_name, email, hashedPassword]
-    );
-
-    const nurse_id = result.rows[0].nurse_id;
-
-    await pool.query(
-      `INSERT INTO users (nurse_id) 
-       VALUES ($1)`,
-      [nurse_id]
-    );
-
-    res.status(201).json({
-      message: "Nurse registered successfully",
-      nurse_id: result.rows[0].nurse_id, // Return autogenerated sequential ID
-    });
-  } catch (error) {
-    console.error("Error registering nurse:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-*/
-
-app.post("/register/nurse", async (req, res) => {
-  const { first_name, last_name, email, password } = req.body;
-
-  try {
-    // 🔹 Check if email already exists
-    const emailCheck = await pool.query(
-      "SELECT * FROM nurses WHERE email = $1",
-      [email]
-    );
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert nurse into the database (Auto-generated nurse_id starts at 2222)
-    const result = await pool.query(
-      `INSERT INTO nurses (first_name, last_name, email, password) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING nurse_id`,
-      [first_name, last_name, email, hashedPassword]
-    );
-
-    const nurse_id = result.rows[0].nurse_id; // Extract nurse_id
-
-    // Insert into users table
-
-    res.status(201).json({
-      message: "Nurse registered successfully",
-      nurse_id: nurse_id, // Return autogenerated sequential ID
-    });
-    await pool.query(
-      `INSERT INTO users (user_id) 
-       VALUES ($1)`,
-      [nurse_id]
-    );
-  } catch (error) {
-    console.error("Error registering nurse:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Nurse Login API (Use `nurse_id` instead of email)
-app.get("/login/nurse", async (req, res) => {
-  const { nurse_id, password } = req.body;
-
-  try {
-    // Check if nurse exists by ID
-    const result = await pool.query(
-      "SELECT * FROM nurses WHERE nurse_id = $1",
-      [nurse_id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid Nurse ID or password" });
-    }
-
-    const nurse = result.rows[0];
-
-    // 🔹 Compare entered password with stored hashed password
-    const isMatch = await bcrypt.compare(password, nurse.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Nurse ID or password" });
-    }
-
-    // Generate JWT token for authentication
-    const token = jwt.sign(
-      { nurse_id: nurse.nurse_id, role: "nurse" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.json({
-      message: "Nurse login successful",
-      token,
-      role: "nurse",
-    });
-  } catch (error) {
-    console.error("Error logging in:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.post("/register/volunteer", async (req, res) => {
-  const { first_name, last_name, email, password } = req.body;
-
-  try {
-    // 🔹 Check if email already exists
-    const emailCheck = await pool.query(
-      "SELECT * FROM volunteers WHERE email = $1",
-      [email]
-    );
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // 🔹 Hash password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 🔹 Insert volunteer into the database
-    const result = await pool.query(
-      `INSERT INTO volunteers (first_name, last_name, email, password) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING volunteer_id`,
-      [first_name, last_name, email, hashedPassword]
-    );
-
-    const volunteer_id = result.rows[0].volunteer_id; // Extract volunteer_id
-
-    res.status(201).json({
-      message: "Volunteer registered successfully",
-      volunteer_id: volunteer_id, // Return generated ID
-    });
-  } catch (error) {
-    console.error("Error registering volunteer:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.get("/login/volunteer", async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // 🔹 Check if volunteer exists by email
-    const result = await pool.query(
-      "SELECT * FROM volunteers WHERE email = $1",
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    const volunteer = result.rows[0];
-
-    // 🔹 Compare entered password with stored hashed password
-    const isMatch = await bcrypt.compare(password, volunteer.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // 🔹 Generate JWT token
-    const token = jwt.sign(
-      { volunteer_id: volunteer.volunteer_id, role: "volunteer" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.json({
-      message: "Volunteer login successful",
-      token,
-      role: "volunteer",
-    });
-  } catch (error) {
-    console.error("Error logging in volunteer:", error.message);
-    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -692,6 +520,285 @@ app.get("/lookup-patient/:adharNumber", async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching patient details:", error.stack);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/register", async (req, res) => {
+  const { first_name, last_name, email, password, role } = req.body;
+
+  try {
+    // Check if email already exists
+    const emailCheck = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert into `nurses` table (Auto-generates `nurse_id`)
+    const nurseResult = await pool.query(
+      `INSERT INTO nurses (first_name, last_name, email, password) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING nurse_id`,
+      [first_name, last_name, email, hashedPassword]
+    );
+
+    const nurse_id = nurseResult.rows[0].nurse_id; // Nurse ID (Auto-generated)
+
+    // Set selected role to 0.5 (pending approval), others to 0
+    const volunteer = role === "volunteer" ? 0.5 : 0;
+    const practitioner = role === "practitioner" ? 0.5 : 0;
+    const admin = role === "admin" ? 0.5 : 0;
+
+    // Insert into `users` table (user_id = nurse_id)
+    await pool.query(
+      `INSERT INTO users (user_id, volunteer, practitioner, admin) 
+       VALUES ($1, $2, $3, $4)`,
+      [nurse_id, volunteer, practitioner, admin]
+    );
+
+    res.status(201).json({
+      message: "User registered successfully",
+      nurse_id, // Nurse ID and User ID are the same
+    });
+  } catch (error) {
+    console.error("❌ Error registering user:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//LOGIN USERS 
+app.post("/login", async (req, res) => {
+  const { email, password, role } = req.body;
+
+  try {
+    // 🔹 Check if user exists in the `nurses` table
+    const nurseResult = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
+    if (nurseResult.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const nurse = nurseResult.rows[0];
+
+    // 🔹 Validate password
+    const isMatch = await bcrypt.compare(password, nurse.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // 🔹 Retrieve the user's role status from `users` table
+    const userResult = await pool.query(
+      "SELECT user_id, COALESCE(volunteer, 0) AS volunteer, COALESCE(practitioner, 0) AS practitioner, COALESCE(admin, 0) AS admin FROM users WHERE user_id = $1",
+      [nurse.nurse_id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User role not found. Please contact admin." });
+    }
+
+    const user = userResult.rows[0];
+
+    console.log(`🛠 Checking roles: User ID ${user.user_id}, Volunteer: ${user.volunteer}, Practitioner: ${user.practitioner}, Admin: ${user.admin}`);
+
+    // 🔹 Check if the selected role is properly authorized (should be `1`)
+    if (
+      (role === "practitioner" && parseInt(user.practitioner) !== 1) ||
+      (role === "volunteer" && parseInt(user.volunteer) !== 1) ||
+      (role === "admin" && parseInt(user.admin) !== 1)
+    ) {
+      return res.status(403).json({ message: "Your selected role is not authorized. Request approval from an admin." });
+    }
+
+    // 🔹 Generate JWT token
+    const token = jwt.sign({ user_id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    res.json({ message: "Login successful", token, role, user_id: user.user_id });
+  } catch (error) {
+    console.error("❌ Error logging in:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+//ADMIN AUTHORIZATION: Get Pending Users (role = 0.5)
+app.get("/pending-users", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.user_id, n.first_name, n.last_name, n.email, 
+              CASE 
+                WHEN u.practitioner = 0.5 THEN 'practitioner' 
+                WHEN u.volunteer = 0.5 THEN 'volunteer' 
+                WHEN u.admin = 0.5 THEN 'admin' 
+              END AS role 
+       FROM users u
+       JOIN nurses n ON u.user_id = n.nurse_id  -- Connect users and nurses
+       WHERE u.practitioner = 0.5 OR u.volunteer = 0.5 OR u.admin = 0.5`
+    );
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("❌ Error fetching pending users:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+//ADMIN AUTHORIZATION: Approve User (Change Role to 1)
+app.put("/approve-user/:user_id/:role", async (req, res) => {
+  const { user_id, role } = req.params;
+
+  if (!["practitioner", "volunteer", "admin"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified" });
+  }
+
+  try {
+    await pool.query(`UPDATE users SET ${role} = 1 WHERE user_id = $1`, [user_id]);
+    res.status(200).json({ message: `User ${user_id} approved as ${role}` });
+  } catch (error) {
+    console.error("❌ Error approving user:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// GET USER ROLES BY USER_ID 
+app.get("/get-user-roles/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    const result = await pool.query("SELECT volunteer, practitioner, admin FROM users WHERE user_id = $1", [user_id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("❌ Error fetching user roles:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+//UPDATE ROLE TO IN-PROGRESS (0.5) 
+app.put("/update-role-progress/:user_id/:role", async (req, res) => {
+  const { user_id, role } = req.params;
+
+  if (!["practitioner", "volunteer", "admin"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified" });
+  }
+
+  try {
+    await pool.query(`UPDATE users SET ${role} = 0.5 WHERE user_id = $1`, [user_id]);
+    res.status(200).json({ message: `Updated ${role} to 0.5 for user ${user_id}` });
+  } catch (error) {
+    console.error("❌ Error updating role progress:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/get-patient-info/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { adharNumber } = req.params;
+
+    const result = await client.query(
+      `SELECT fname, lname, age, gender, address, village, date, worker_name, dob, phone_num, adhar_number FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({error: "Patient not found"});
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching patient data", error);
+    res.status(500).json({ error: error.message});
+  } finally {
+    client.release();
+  }
+})
+
+app.get("/get-patient-id/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+  const { adharNumber } = req.params;
+
+  try {
+    const result = await client.query(
+      `SELECT patient_id FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+
+    res.status(200).json({ patient_id: result.rows[0].patient_id });
+  } catch (error) {
+    console.error("❌ Error fetching patient ID:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+
+app.get("/get-patient-history/:patient_id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { patient_id } = req.params;
+
+    // ✅ Check if patient exists
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found." });
+    }
+
+    // ✅ Retrieve data from all tables
+    const ophthalmologyHistory = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const systemicHistory = await client.query(
+      `SELECT * FROM systemic_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const allergyHistory = await client.query(
+      `SELECT * FROM allergy_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const contactLensesHistory = await client.query(
+      `SELECT * FROM contact_lenses_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const surgicalHistory = await client.query(
+      `SELECT * FROM surgical_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    // ✅ Check if history exists (otherwise return empty defaults)
+    const patientHistory = {
+      ophthalmologyHistory: ophthalmologyHistory.rows[0] || {},
+      systemicHistory: systemicHistory.rows[0] || {},
+      allergyHistory: allergyHistory.rows[0] || {},
+      contactLensesHistory: contactLensesHistory.rows[0] || {},
+      surgicalHistory: surgicalHistory.rows[0] || {},
+    };
+
+    res.status(200).json(patientHistory);
+
+  } catch (error) {
+    console.error("❌ Error fetching patient history:", error);
+    res.status(500).json({ error: "Failed to retrieve patient history." });
   } finally {
     client.release();
   }

@@ -1,7 +1,9 @@
 import React, {useState, useEffect} from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Network from "expo-network";
+import { Stack } from "expo-router";
+
 
 export default function PatientProgress() {
   const router = useRouter();
@@ -57,26 +59,12 @@ export default function PatientProgress() {
 }, [patientProgress]);  // ✅ This will log every time progress updates
 
 
-  // 🔹 Hardcoded Patient Progress Data (Replace with API Calls Later)
-  const hardcodedProgress = {
-    123456789012: {
-      registration: "Complete",
-      medical: "In Progress",
-      testing: "Not Done",
-    },
-    987654321098: {
-      registration: "Complete",
-      medical: "Complete",
-      testing: "In Progress",
-    },
-    555555555555: {
-      registration: "In Progress",
-      medical: "Not Done",
-      testing: "Not Done",
-    },
-  };
+return (
+  <>
+    {/* Disable back button */}
+    <Stack.Screen options={{ headerShown: false }} />
 
-  return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       <Text style={styles.title}>Patient Progress</Text>
 
@@ -85,117 +73,130 @@ export default function PatientProgress() {
         <ProgressCard
           title="Registration"
           status={patientProgress.registration}
-          onPress={() => router.push(`/PatientInfoPage`)}
+          onPress={() => router.push(`/PatientInfoPage?adharNumber=${adharNumber}`)}
         />
         <ProgressCard
           title="Medical History"
           status={patientProgress.medical}
-          onPress={() => router.push(`/MedicalHistory`)}
+          onPress={() => router.push(`/MedicalHistory?adharNumber=${adharNumber}`)}
         />
         <ProgressCard
           title="Testing"
           status={patientProgress.testing}
-          onPress={() => router.push(`/VisionTest`)}
+          onPress={() => router.push(`/VisionTest?adharNumber=${adharNumber}`)}
         />
       </View>
 
       {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.buttonText}>⬅ Back</Text>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.replace("/PatientLookup")} // 🚀 Reset stack to go directly to lookup
+        >
+          <Text style={styles.buttonText}>⬅ Back to Patient Lookup</Text>
       </TouchableOpacity>
     </View>
-  );
+    </SafeAreaView>
+  </>
+);
 }
 
 // 🔹 Custom Card Component for Progress Status
-const ProgressCard = ({ title, status }) => {
-  const statusColors = {
-    Complete: "#34C759",
-    "In Progress": "#FFCC00",
-    "Not Done": "#FF3B30",
-    "Not Found": "#CCCCCC",
-  };
+const ProgressCard = ({ title, status, onPress }) => {
+const statusColors = {
+  Complete: "#34C759",
+  "In Progress": "#FFCC00",
+  "Not Done": "#FF3B30",
+  "Not Found": "#CCCCCC",
+};
 
-  return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={[styles.status, { backgroundColor: statusColors[status] }]}>
-        {status}
-      </Text>
-      <TouchableOpacity style={styles.detailsButton}>
-        <Text style={styles.detailsButtonText}>View Details</Text>
-      </TouchableOpacity>
-    </View>
-  );
+const buttonText = status === "Complete" ? "View Details" : "Fill Out Form";
+
+return (
+  <View style={styles.card}>
+    <Text style={styles.cardTitle}>{title}</Text>
+    <Text style={[styles.status, { backgroundColor: statusColors[status] }]}>
+      {status}
+    </Text>
+    <TouchableOpacity style={styles.detailsButton} onPress={onPress}>
+      <Text style={styles.detailsButtonText}>{buttonText}</Text>
+    </TouchableOpacity>
+  </View>
+);
 };
 
 // 🔹 Updated Styles for a Vertical Layout
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    alignItems: "center",
-    backgroundColor: "#F2F2F7", // Light gray background for a modern look
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#000", // Darker text for contrast
-  },
-  progressContainer: {
-    width: "100%", // Full width
-    alignItems: "center", // Center content
-  },
-  card: {
-    padding: 18,
-    borderRadius: 15, // Rounded corners
-    backgroundColor: "#FFFFFF", // White background for contrast
-    width: "90%", // Wider for better readability
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 4, // Android shadow
-    marginBottom: 15, // Space between cards
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  status: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20, // Fully rounded status pill
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-    overflow: "hidden", // Ensures no text spills
-  },
-  detailsButton: {
-    backgroundColor: "#007AFF", // iOS blue button
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    marginTop: 12,
-  },
-  detailsButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  backButton: {
-    marginTop: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    backgroundColor: "#FF3B30", // Red cancel color
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+safeArea: {
+  flex: 1,
+  backgroundColor: "#F2F2F7",
+  paddingTop: Platform.OS === "android" ? 30 : 0, // Adjust for Android
+},
+container: {
+  flex: 1,
+  padding: 20,
+  alignItems: "center",
+  justifyContent: "center", // Ensures content is properly centered
+  backgroundColor: "#F2F2F7",
+},
+title: {
+  fontSize: 26,
+  fontWeight: "bold",
+  marginBottom: 20,
+  color: "#000", // Darker text for contrast
+},
+progressContainer: {
+  width: "100%", // Full width
+  alignItems: "center", // Center content
+},
+card: {
+  padding: 18,
+  borderRadius: 15, // Rounded corners
+  backgroundColor: "#FFFFFF", // White background for contrast
+  width: "90%", // Wider for better readability
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOpacity: 0.1,
+  shadowRadius: 5,
+  elevation: 4, // Android shadow
+  marginBottom: 15, // Space between cards
+},
+cardTitle: {
+  fontSize: 18,
+  fontWeight: "600",
+  textAlign: "center",
+  marginBottom: 8,
+},
+status: {
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 20, // Fully rounded status pill
+  color: "#fff",
+  fontWeight: "600",
+  fontSize: 14,
+  overflow: "hidden", // Ensures no text spills
+},
+detailsButton: {
+  backgroundColor: "#007AFF", // iOS blue button
+  paddingVertical: 10,
+  paddingHorizontal: 14,
+  borderRadius: 10,
+  marginTop: 12,
+},
+detailsButtonText: {
+  color: "#FFFFFF",
+  fontWeight: "bold",
+  fontSize: 14,
+},
+backButton: {
+  marginTop: 30,
+  paddingVertical: 12,
+  paddingHorizontal: 40,
+  backgroundColor: "#FF3B30", // Red cancel color
+  borderRadius: 10,
+},
+buttonText: {
+  color: "#FFFFFF",
+  fontWeight: "bold",
+  fontSize: 16,
+},
 });

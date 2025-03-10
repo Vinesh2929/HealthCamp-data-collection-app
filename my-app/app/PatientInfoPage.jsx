@@ -16,7 +16,7 @@ import { Button } from "../components/Button";
 import { ThemedText } from "../components/ThemedText";
 import { BackHandler } from "react-native";
 // import { useNavigation } from "expo-router";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import axios from "axios";
 import * as Network from "expo-network";
 
@@ -34,6 +34,30 @@ import * as Network from "expo-network";
 const PatientInfoPage1 = () => {
   const router = useRouter(); // ✅ Use router instead of navigation
   const [serverIP, setServerIP] = useState(null);
+  const { adharNumber } = useLocalSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [patientInfo, setPatientInfo] = useState({
+    fname: "",
+    lname: "",
+    age: "",
+    gender: "Male",
+    address: "",
+    village: "",
+    date: "",
+    worker_name: "",
+    DOB: "",
+    adhar_number: "",
+    phone_num: "",
+  });
+  const formatDate = (isoDate) => {
+    if (!isoDate) return ""; // Handle empty case
+    return new Date(isoDate).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
 
   useEffect(() => {
     const fetchLocalIP = async () => {
@@ -59,19 +83,35 @@ const PatientInfoPage1 = () => {
     return () => backHandler.remove();
   }, []);
 
-  const [patientInfo, setPatientInfo] = useState({
-    fname: "",
-    lname: "",
-    age: "",
-    gender: "Male",
-    address: "",
-    village: "",
-    date: "",
-    worker_name: "",
-    DOB: "",
-    adhar_number: "",
-    phone_num: "",
-  });
+  useEffect(() => {
+    const fetchPatientDetails = async () => {
+      if (!serverIP || !adharNumber) return;
+
+      try {
+        const response = await axios.get(`http://${serverIP}:5001/get-patient-info/${adharNumber}`);
+
+        if (response.status === 200) {
+          setPatientInfo((prevState) => ({
+            ...prevState,
+            ...response.data,
+            id: response.data.adhar_number ? String(response.data.adhar_number) : "",
+            age: response.data.age ? String(response.data.age) : "",
+            date: formatDate(response.data.date),
+          DOB: formatDate(response.data.dob),
+          }));
+        }
+
+        console.log(response.data);
+      } catch (error) {
+        console.error("Error fetching patient info", error);
+        Alert.alert("Error", "Failed to fetch patient details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPatientDetails();
+  }, [serverIP, adharNumber]);
 
   const updatePatientInfo = (field, value) => {
     setPatientInfo((prevState) => ({
