@@ -363,7 +363,14 @@ const AdminDashboard = () => {
                 router.push("/AdminAuthorization"); 
               }} 
             />
-            <Button title="Site Management" style={styles.menuButton} />
+            <Button 
+              title="Site Management" 
+              style={styles.menuButton} 
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/SiteManagement"); 
+              }} 
+            />
             <Button 
               title="Back to Login" 
               style={styles.menuButton}

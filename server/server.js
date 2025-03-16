@@ -41,7 +41,7 @@ app.use(bodyParser.json());
 // I've removed the duplicate login route that was at the bottom of the file
 // and fixed this one to properly handle the hardcoded admin
 // ===================================================
-app.post("/login", async (req, res) => {
+/*app.post("/login", async (req, res) => {
   // Debug logging to see what's being received
   console.log("Login attempt received:", req.body);
   
@@ -115,7 +115,7 @@ app.post("/login", async (req, res) => {
     console.error("❌ Error logging in:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
-});
+});*/
 
 // ===================================================
 // The rest of your routes below - no changes needed
@@ -601,7 +601,6 @@ app.get("/pending-users", async (req, res) => {
   }
 });
 
-
 //ADMIN AUTHORIZATION: Approve User (Change Role to 1)
 app.put("/approve-user/:user_id/:role", async (req, res) => {
   const { user_id, role } = req.params;
@@ -699,7 +698,6 @@ app.get("/get-patient-id/:adharNumber", async (req, res) => {
   }
 });
 
-
 app.get("/get-patient-history/:patient_id", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -759,6 +757,7 @@ app.get("/get-patient-history/:patient_id", async (req, res) => {
     client.release();
   }
 });
+
 // Add this temporary endpoint to get table information
 app.get("/db-schema", async (req, res) => {
   const client = await pool.connect();
@@ -1068,7 +1067,6 @@ app.get("/disease-distribution", async (req, res) => {
   }
 });
 
-
 // Add this temporary endpoint to your server.js
 app.get("/add-test-patients", async (req, res) => {
   const client = await pool.connect();
@@ -1113,8 +1111,48 @@ app.get("/add-test-patients", async (req, res) => {
     client.release();
   }
 });
+
+app.get("/api/nurses", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM nurses");
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("Error fetching nurses:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get user roles
+app.get("/api/user-roles", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM users");
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("Error fetching user roles:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update user role
+app.put("/api/update-role/:user_id/:role", async (req, res) => {
+  const { user_id, role } = req.params;
+  const { value } = req.body;
+
+  if (!["volunteer", "practitioner", "admin"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified" });
+  }
+
+  try {
+    await pool.query(`UPDATE users SET ${role} = $1 WHERE user_id = $2`, [value, user_id]);
+    res.status(200).json({ message: `Updated ${role} to ${value} for user ${user_id}` });
+  } catch (error) {
+    console.error("Error updating role:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Start Server
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
