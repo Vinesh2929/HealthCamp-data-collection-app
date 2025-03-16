@@ -20,7 +20,7 @@ const screenWidth = Dimensions.get("window").width;
 
 // API Base URL - Update this to your server address
 // Use your computer's IP address when testing on a physical device
-const API_URL = "http://localhost:8080"; // Change to your server URL
+const API_URL = "http://localhost:5001"; // Change to your server URL
 
 // Create some sample data for initial testing
 const initialChartData = {
