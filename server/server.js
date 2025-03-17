@@ -1230,6 +1230,174 @@ app.put("/api/update-role/:user_id/:role", async (req, res) => {
   }
 });
 
+// Endpoint to handle autorefractor vision test results
+app.post("/vision-test-results", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const {
+      patient_id,
+      eye,        // "right", "left" or "both"
+      sphere,     
+      cylinder,   
+      axis,       
+      pd,         
+      notes,
+      staff_id
+    } = req.body;
+
+    // Validate the patient ID exists
+      const patientCheck = await client.query(
+        `SELECT patient_id FROM patients WHERE patient_id = $1`,
+        [patient_id]
+      );
+
+      if (patientCheck.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Patient not found." });
+      }
+
+    const duplicateCheck = await client.query(
+      `SELECT test_id FROM autorefractor_tests WHERE patient_id = $1 AND eye = $2`,
+      [patient_id, eye]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: `A test for the ${eye} eye already exists.` });
+    }
+
+    // Insert into autorefractor_tests table
+    const testResult = await client.query(
+      `INSERT INTO autorefractor_tests (patient_id, eye, sphere, cylinder, axis, pd, notes, staff_id, timestamp) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       RETURNING test_id`,
+      [
+        patient_id || null,
+        eye,
+        sphere || null,
+        cylinder || null,
+        axis || null,
+        pd || null,
+        notes || null,
+        staff_id || null
+      ]
+    );
+    
+    const test_id = testResult.rows[0].test_id;
+
+    const visionTestCheck = await client.query(
+      `SELECT COUNT(DISTINCT eye) as eye_count FROM autorefractor_tests 
+       WHERE patient_id = $1 AND eye IN ('right', 'left')`,
+      [patient_id]
+    );
+
+    const eyeCount = Number(visionTestCheck.rows[0].eye_count);
+
+    if (eyeCount === 2) {
+      await client.query(
+        `UPDATE completion1 SET station3 = 1 WHERE patient_id = $1`,
+        [patient_id]
+      );
+
+      const confirmUpdate = await client.query(
+        `SELECT station3 FROM completion1 WHERE patient_id = $1`,
+        [patient_id]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({ 
+      message: `Autorefractor test results saved successfully!`,
+      test_id
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(`❌ Error saving autorefractor test results:`, error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/check-vision-completion/:patient_id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { patient_id } = req.params;
+
+    const result = await client.query(
+      `SELECT station3 FROM completion1 WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (result.rows.length > 0) {
+      res.status(200).json({ station3: result.rows[0].station3 });
+    } else {
+      res.status(404).json({ error: "Patient progress not found." });
+    }
+  } catch (error) {
+    console.error("❌ Error checking vision test completion:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/get-vision-test/:patient_id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { patient_id } = req.params;
+
+    console.log(`📩 Fetching vision test results for patient: ${patient_id}`);
+
+    // Fetch vision test results for both eyes
+    const visionResults = await client.query(
+      `SELECT eye, sphere, cylinder, axis, pd, notes, staff_id, timestamp
+       FROM autorefractor_tests
+       WHERE patient_id = $1 AND eye IN ('right', 'left')`,
+      [patient_id]
+    );
+
+    if (visionResults.rows.length === 0) {
+      console.warn(`⚠️ No vision test results found for patient ${patient_id}.`);
+      return res.status(404).json({ error: "No vision test data found." });
+    }
+
+    // Convert results into a structured response
+    let visionTestData = {
+      right: null,
+      left: null,
+      station3Completed: false,
+    };
+
+    visionResults.rows.forEach((test) => {
+      visionTestData[test.eye] = {
+        sphere: test.sphere,
+        cylinder: test.cylinder,
+        axis: test.axis,
+        pd: test.pd,
+        notes: test.notes,
+        staff_id: test.staff_id,
+        timestamp: test.timestamp,
+      };
+    });
+
+    // Check if both eyes have been tested
+    if (visionTestData.right && visionTestData.left) {
+      visionTestData.station3Completed = true;
+    }
+
+    console.log(`✅ Vision test data retrieved for patient ${patient_id}:`, visionTestData);
+    res.status(200).json(visionTestData);
+  } catch (error) {
+    console.error(`❌ Error fetching vision test data:`, error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
