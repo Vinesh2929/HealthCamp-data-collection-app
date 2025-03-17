@@ -508,6 +508,85 @@ app.post("/submit-station-2", async (req, res) => {
   }
 });
 
+const formatDate = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Ensure two digits
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
+
+app.get("/lookup-patient-nurse/:adharNumber", async (req, res) => {
+  const { adharNumber } = req.params;
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `SELECT patient_id, fname, lname, age, dob, gender, address, village, phone_num 
+       FROM patients 
+       WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Patient not found." });
+    }
+
+    const patientData = result.rows[0];
+
+    // Format DOB before sending response
+    patientData.dob = formatDate(patientData.dob);
+
+    const { patient_id } = patientData;
+
+    // ✅ Fetch medical history tables
+    const ophthalmologyHistory = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const systemicHistory = await client.query(
+      `SELECT * FROM systemic_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const allergyHistory = await client.query(
+      `SELECT * FROM allergy_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const contactLensesHistory = await client.query(
+      `SELECT * FROM contact_lenses_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const surgicalHistory = await client.query(
+      `SELECT * FROM surgical_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    // ✅ Combine patient details & history
+    const responseData = {
+      ...patientData,
+      medicalHistory: {
+        ophthalmologyHistory: ophthalmologyHistory.rows[0] || {},
+        systemicHistory: systemicHistory.rows[0] || {},
+        allergyHistory: allergyHistory.rows[0] || {},
+        contactLensesHistory: contactLensesHistory.rows[0] || {},
+        surgicalHistory: surgicalHistory.rows[0] || {},
+      },
+    };
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    console.error("Error fetching patient details:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/lookup-patient/:adharNumber", async (req, res) => {
   const { adharNumber } = req.params;
   const client = await pool.connect();
