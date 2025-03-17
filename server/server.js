@@ -41,7 +41,7 @@ app.use(bodyParser.json());
 // I've removed the duplicate login route that was at the bottom of the file
 // and fixed this one to properly handle the hardcoded admin
 // ===================================================
-/*app.post("/login", async (req, res) => {
+app.post("/login", async (req, res) => {
   // Debug logging to see what's being received
   console.log("Login attempt received:", req.body);
   
@@ -115,7 +115,7 @@ app.use(bodyParser.json());
     console.error("❌ Error logging in:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
-});*/
+});
 
 // ===================================================
 // The rest of your routes below - no changes needed
