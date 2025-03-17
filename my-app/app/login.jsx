@@ -105,77 +105,77 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-// ✅ StyleSheet for all styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
     padding: 20,
-    backgroundColor: "#f4f4f4",
+    backgroundColor: "#F9F7F3", // Base Color
   },
   formContainer: {
     backgroundColor: "white",
     padding: 30,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 12,
+    shadowColor: "#293241", // Dark blue for subtle shadow
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 4,
     width: "100%",
     maxWidth: 400,
     alignSelf: "center",
     textAlign: "center",
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
     marginBottom: 24,
     textAlign: "center",
-    color: "#333",
+    color: "#3E7CB1", // Blue accent for emphasis
   },
   input: {
     width: "100%",
-    padding: 12,
+    padding: 14,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 5,
+    borderColor: "#DBE4EE", // Light blue border
+    borderRadius: 8,
     fontSize: 16,
     backgroundColor: "white",
   },
   picker: {
     width: "100%",
     height: 200,
-    color: "#000",
+    color: "#293241", // Dark blue for text
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    marginBottom: 5,
+    borderColor: "#98C1D9", // Lighter blue border
+    borderRadius: 8,
+    marginBottom: 8,
     paddingHorizontal: 5,
   },
   button: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#3E7CB1", // Blue primary button
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
   },
   buttonText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "bold",
   },
   registerLink: {
-    marginTop: 16,
+    marginTop: 18,
     alignItems: "center",
   },
   linkText: {
-    color: "#2196F3",
-    fontSize: 14,
+    color: "#98C1D9", // 
+    fontSize: 15,
     textDecorationLine: "underline",
+    fontWeight: "600",
   },
 });
+
