@@ -242,7 +242,7 @@ const PatientInfoPage1 = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#F9F7F3",
   },
   flex: {
     flex: 1,
@@ -259,8 +259,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 24,
-    color: "#007AFF",
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
+    color: "#8f2d56",
+  
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
@@ -294,12 +294,13 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     marginLeft: 8,
-    color: "#007AFF",
+    color: "#DBE4EE",
     fontSize: 16,
   },
   submitButton: {
     marginTop: 24,
     marginBottom: 40,
+    backgroundColor: "#E5CEDC",
   },
   checkboxGrid: {
     marginBottom: 16,
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     borderRadius: 8,
-    backgroundColor: "#007AFF",
+    backgroundColor: "#E5CEDC",
     alignSelf: "flex-start",
   },
   backButtonText: {

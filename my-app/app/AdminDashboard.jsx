@@ -381,14 +381,6 @@ const AdminDashboard = () => {
               }} 
             />
             <Button 
-              title="Data" 
-              style={styles.menuButton} 
-              onPress={() => {
-                setMenuVisible(false);
-                router.push("/PatientProgress");
-              }}
-            />
-            <Button 
               title="Close" 
               onPress={() => setMenuVisible(false)} 
               style={styles.menuButton} 
