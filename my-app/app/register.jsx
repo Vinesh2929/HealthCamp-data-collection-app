@@ -22,7 +22,7 @@ export default function RegisterScreen() {
   });
 
   const [message, setMessage] = useState("");
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(true);
   const router = useRouter();
 
   const handleRegister = async () => {

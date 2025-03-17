@@ -53,6 +53,14 @@ export default function RootLayout() {
         name="VisionTest"
         options={{ headerShown: true, title: "Vision Test" }}
       />
+      <Stack.Screen
+        name="NursePatientLookup"
+        options={{ headerShown: true, title: "Nurse Patient Lookup" }}
+      />
+       <Stack.Screen
+        name="NursePatientProgeress"
+        options={{ headerShown: true, title: "Nurse Patient Progress" }}
+      />
     </Stack>
   );
 }

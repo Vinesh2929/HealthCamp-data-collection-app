@@ -45,7 +45,7 @@ export default function LoginScreen() {
         router.replace("/AdminDashboard");
       }
     } catch (error) {
-      Alert.alert("Wait for Admin Authorization to Login");
+      Alert.alert("Login Failed", "Invalid credentials or server error.");
     }
 
     setLoading(false);

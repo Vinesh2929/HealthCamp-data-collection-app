@@ -515,9 +515,9 @@ app.post("/register", async (req, res) => {
     const nurse_id = nurseResult.rows[0].nurse_id; // Nurse ID (Auto-generated)
 
     // Set selected role to 0.5 (pending approval), others to 0
-    const volunteer = role === "volunteer" ? 0.5 : 0;
-    const practitioner = role === "practitioner" ? 0.5 : 0;
-    const admin = role === "admin" ? 0.5 : 0;
+    const volunteer = role === "volunteer" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
+    const practitioner = role === "practitioner" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
+    const admin = role === "admin" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
 
     // Insert into `users` table (user_id = nurse_id)
     await pool.query(
@@ -654,7 +654,7 @@ app.put("/update-role-progress/:user_id/:role", async (req, res) => {
   }
 
   try {
-    await pool.query(`UPDATE users SET ${role} = 0.5 WHERE user_id = $1`, [user_id]);
+    await pool.query(`UPDATE users SET ${role} = CAST(0.5 AS FLOAT) WHERE user_id = $1`, [user_id]);
     res.status(200).json({ message: `Updated ${role} to 0.5 for user ${user_id}` });
   } catch (error) {
     console.error("❌ Error updating role progress:", error);

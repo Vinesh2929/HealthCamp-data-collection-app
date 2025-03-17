@@ -11,17 +11,10 @@ export default function NurseDashboard() {
     <View style={styles.container}>
       <ThemedText style={styles.title}>Nurse Dashboard</ThemedText>
 
-      {/* Navigate to Patient Registration */}
-      <Button
-        title="Register New Patient"
-        onPress={() => router.push("/PatientInfoPage")}
-        style={styles.button}
-      />
-
       {/* Navigate to Patient Lookup */}
       <Button
         title="Search Patient Records"
-        onPress={() => router.push("/PatientLookup")}
+        onPress={() => router.push("/NursePatientLookup")}
         style={styles.button}
       />
 
@@ -29,13 +22,6 @@ export default function NurseDashboard() {
       <Button
         title="View Reports"
         onPress={() => router.push("/reports")}
-        style={styles.button}
-      />
-
-      {/* Navigate to Staff Communication */}
-      <Button
-        title="Staff Communication"
-        onPress={() => router.push("/staffChat")}
         style={styles.button}
       />
     </View>
