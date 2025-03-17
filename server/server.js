@@ -508,6 +508,85 @@ app.post("/submit-station-2", async (req, res) => {
   }
 });
 
+const formatDate = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Ensure two digits
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
+
+app.get("/lookup-patient-nurse/:adharNumber", async (req, res) => {
+  const { adharNumber } = req.params;
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `SELECT patient_id, fname, lname, age, dob, gender, address, village, phone_num 
+       FROM patients 
+       WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Patient not found." });
+    }
+
+    const patientData = result.rows[0];
+
+    // Format DOB before sending response
+    patientData.dob = formatDate(patientData.dob);
+
+    const { patient_id } = patientData;
+
+    // ✅ Fetch medical history tables
+    const ophthalmologyHistory = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const systemicHistory = await client.query(
+      `SELECT * FROM systemic_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const allergyHistory = await client.query(
+      `SELECT * FROM allergy_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const contactLensesHistory = await client.query(
+      `SELECT * FROM contact_lenses_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const surgicalHistory = await client.query(
+      `SELECT * FROM surgical_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    // ✅ Combine patient details & history
+    const responseData = {
+      ...patientData,
+      medicalHistory: {
+        ophthalmologyHistory: ophthalmologyHistory.rows[0] || {},
+        systemicHistory: systemicHistory.rows[0] || {},
+        allergyHistory: allergyHistory.rows[0] || {},
+        contactLensesHistory: contactLensesHistory.rows[0] || {},
+        surgicalHistory: surgicalHistory.rows[0] || {},
+      },
+    };
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    console.error("Error fetching patient details:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/lookup-patient/:adharNumber", async (req, res) => {
   const { adharNumber } = req.params;
   const client = await pool.connect();
@@ -600,7 +679,6 @@ app.get("/pending-users", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 //ADMIN AUTHORIZATION: Approve User (Change Role to 1)
 app.put("/approve-user/:user_id/:role", async (req, res) => {
@@ -699,7 +777,6 @@ app.get("/get-patient-id/:adharNumber", async (req, res) => {
   }
 });
 
-
 app.get("/get-patient-history/:patient_id", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -759,6 +836,7 @@ app.get("/get-patient-history/:patient_id", async (req, res) => {
     client.release();
   }
 });
+
 // Add this temporary endpoint to get table information
 app.get("/db-schema", async (req, res) => {
   const client = await pool.connect();
@@ -1068,7 +1146,6 @@ app.get("/disease-distribution", async (req, res) => {
   }
 });
 
-
 // Add this temporary endpoint to your server.js
 app.get("/add-test-patients", async (req, res) => {
   const client = await pool.connect();
@@ -1113,6 +1190,46 @@ app.get("/add-test-patients", async (req, res) => {
     client.release();
   }
 });
+
+app.get("/api/nurses", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM nurses");
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("Error fetching nurses:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get user roles
+app.get("/api/user-roles", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM users");
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("Error fetching user roles:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update user role
+app.put("/api/update-role/:user_id/:role", async (req, res) => {
+  const { user_id, role } = req.params;
+  const { value } = req.body;
+
+  if (!["volunteer", "practitioner", "admin"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified" });
+  }
+
+  try {
+    await pool.query(`UPDATE users SET ${role} = $1 WHERE user_id = $2`, [value, user_id]);
+    res.status(200).json({ message: `Updated ${role} to ${value} for user ${user_id}` });
+  } catch (error) {
+    console.error("Error updating role:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {

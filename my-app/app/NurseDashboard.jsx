@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,17 +12,23 @@ import {
   Dimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import LogoutButton from './LogoutButton';
+import * as Network from "expo-network";
+
 
 // Mock icons (in a real app, you'd use a library like @expo/vector-icons)
 const SearchIcon = () => (
   <Text style={{ fontSize: 18, color: '#999' }}>🔍</Text>
 );
-
-const UserIcon = () => (
-  <Text style={{ fontSize: 18, color: '#999' }}>👤</Text>
-);
-
+const UserIcon = ({ gender }) => {
+  switch (gender?.toLowerCase()) {
+    case "male":
+      return <Text style={{ fontSize: 18, color: '#007bff' }}>👨</Text>; // Male icon
+    case "female":
+      return <Text style={{ fontSize: 18, color: '#ff69b4' }}>👩</Text>; // Female icon
+    default:
+      return <Text style={{ fontSize: 18, color: '#999' }}>⚧️</Text>; // Gender-neutral icon
+  }
+};
 const HeartIcon = () => (
   <Text style={{ fontSize: 18, color: '#999' }}>❤️</Text>
 );
@@ -42,6 +47,7 @@ const NurseDashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [serverIP, setServerIP] = useState(null);
   const router = useRouter();
 
   // Mock patient data - in a real app, this would come from your API
@@ -272,6 +278,235 @@ const NurseDashboard = () => {
     }
   };
 
+  
+
+  useEffect(() => {
+    const fetchLocalIP = async () => {
+      try {
+        const ipAddress = await Network.getIpAddressAsync();
+        setServerIP(ipAddress);
+      } catch (error) {
+        Alert.alert("Error", "Failed to retrieve server IP.");
+      }
+    };
+    fetchLocalIP();
+  }, []);
+
+  // Mock patient data - in a real app, this would come from your API
+  const mockPatientData = {
+    name: 'Sarah Smith',
+    gender: 'Female',
+    age: 24,
+    bloodGroup: 'B+',
+    appointmentDate: '31.10.2020',
+    height: '165 cm',
+    weight: '58 kg',
+    pressure: '120/80',
+    phoneNumber: '+91 9876543210',
+    adharNumber: '123456789012',
+    village: 'Greenwood',
+    medications: [
+      { name: 'Simvastatin', dose: '5 mg', instruction: 'Take 1 with food', duration: '2 Months' },
+      { name: 'Loratadine', dose: '10 mg', instruction: 'Take 1 with food', duration: '3 Weeks' },
+      { name: 'Montelukast', dose: '10 mg', instruction: 'Take 1 with food', duration: '3 Weeks' }
+    ],
+    diagnoses: [
+      { condition: 'Allergic Rhinitis', date: '14.05.2020' },
+      { condition: 'Mild Hypercholesterolemia', date: '14.05.2020' }
+    ],
+    history: [
+      { event: 'Initial Consultation', date: '14.05.2020', notes: 'Patient presented with seasonal allergies and high cholesterol.' },
+      { event: 'Follow-up Appointment', date: '31.10.2020', notes: 'Patient shows improvement in allergy symptoms.' }
+    ]
+  };
+
+  const handleSearch = async () => {
+    if (!adharNumber) {
+      alert("Please enter an Aadhar number.");
+      return;
+    }
+    if (!serverIP) {
+      alert("Server IP not found. Please try again.");
+      return;
+    }
+
+    setLoading(true);
+    setPatientInfo(null);
+    try {
+      const response = await fetch(`http://${serverIP}:5001/lookup-patient-nurse/${adharNumber}`);
+  
+      if (!response.ok) {
+        throw new Error("Patient not found.");
+      }
+  
+      const data = await response.json();
+      
+      setPatientInfo({
+        name: `${data.fname} ${data.lname}`,
+        gender: data.gender,
+        age: data.age,
+        address: data.address,
+        village: data.village,
+        phoneNumber: data.phone_num,
+        adharNumber: adharNumber,
+        dob: data.dob,
+        appointmentDate: 'N/A',
+        history: data.medicalHistory
+      });
+  
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const TabContent = () => {
+    switch (selectedTab) {
+      case 'overview':
+        return (
+          <View style={styles.tabContent}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderTitleContainer}>
+                  <UserIcon gender={patientInfo.gender}/>
+                  <Text style={styles.cardHeaderTitle}>Patient Details</Text>
+                </View>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Full Name:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.name}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Gender:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.gender}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Age:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.age} years</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Address:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.address}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Village:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.village}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Phone:</Text>
+                  <Text style={styles.infoValue}>{patientInfo.phoneNumber}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderTitleContainer}>
+                  <ClockIcon />
+                  <Text style={styles.cardHeaderTitle}>Next Appointment</Text>
+                </View>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.appointmentContainer}>
+                  <View>
+                    <Text style={styles.appointmentLabel}>Date</Text>
+                    <Text style={styles.appointmentValue}>{patientInfo.appointmentDate}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.rescheduleButton}>
+                    <Text style={styles.buttonText}>Reschedule</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderTitleContainer}>
+                  <MedicalIcon />
+                  <Text style={styles.cardHeaderTitle}>Doctor Notes</Text>
+                </View>
+              </View>
+              <View style={styles.cardContent}>
+                <TextInput
+                  style={styles.notesInput}
+                  multiline
+                  numberOfLines={4}
+                  placeholder="Add notes about the patient's condition..."
+                  value={notes}
+                  onChangeText={setNotes}
+                />
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity style={styles.saveButton}>
+                    <Text style={styles.buttonText}>Save Notes</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        );
+        case 'history':
+          return patientInfo?.history ? <HistoryTab history={patientInfo.history} /> : <Text>No history available.</Text>;
+        
+
+      case 'diagnosis':
+        return (
+          <View style={styles.tabContent}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardHeaderTitle}>Diagnosis Information</Text>
+              </View>
+              <View style={styles.cardContent}>
+                {patientInfo.diagnoses.map((diagnosis, index) => (
+                  <View key={index} style={styles.diagnosisItem}>
+                    <Text style={styles.diagnosisCondition}>{diagnosis.condition}</Text>
+                    <Text style={styles.diagnosisDate}>{diagnosis.date}</Text>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addButton}>
+                  <Text style={styles.buttonText}>Add New Diagnosis</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+      case 'medicine':
+        return (
+          <View style={styles.tabContent}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardHeaderTitle}>Medications</Text>
+              </View>
+              <View style={styles.cardContent}>
+                {patientInfo.medications.map((medication, index) => (
+                  <View key={index} style={styles.medicationItem}>
+                    <View style={styles.checkmarkContainer}>
+                      <View style={styles.checkmark}>
+                        <Text style={styles.checkmarkText}>✓</Text>
+                      </View>
+                    </View>
+                    <View style={styles.medicationInfo}>
+                      <Text style={styles.medicationName}>{medication.name}</Text>
+                      <Text style={styles.medicationDetails}>
+                        {medication.dose}, {medication.instruction}
+                      </Text>
+                    </View>
+                    <Text style={styles.medicationDuration}>{medication.duration}</Text>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addButton}>
+                  <Text style={styles.buttonText}>Prescribe New Medication</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -315,30 +550,30 @@ const NurseDashboard = () => {
                     <Text style={styles.infoItemValue}>{patientInfo.name}</Text>
                   </View>
                   <View style={styles.infoItem}>
+                    <Text style={styles.infoItemLabel}>Aadhar Number</Text>
+                    <Text style={styles.infoItemValue}>{patientInfo.adharNumber}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
                     <Text style={styles.infoItemLabel}>Gender</Text>
                     <Text style={styles.infoItemValue}>{patientInfo.gender}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoItemLabel}>Date of Birth</Text>
+                    <Text style={styles.infoItemValue}>{patientInfo.dob}</Text>
                   </View>
                   <View style={styles.infoItem}>
                     <Text style={styles.infoItemLabel}>Age</Text>
                     <Text style={styles.infoItemValue}>{patientInfo.age}</Text>
                   </View>
                   <View style={styles.infoItem}>
-                    <Text style={styles.infoItemLabel}>Blood Group</Text>
-                    <Text style={styles.infoItemValue}>{patientInfo.bloodGroup}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
                     <Text style={styles.infoItemLabel}>Appointment Date</Text>
                     <Text style={styles.infoItemValue}>{patientInfo.appointmentDate}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Text style={styles.infoItemLabel}>Aadhar Number</Text>
-                    <Text style={styles.infoItemValue}>{patientInfo.adharNumber}</Text>
                   </View>
                 </View>
               </View>
               <View style={styles.patientImageContainer}>
                 <View style={styles.patientImage}>
-                  <UserIcon />
+                  <UserIcon gender={patientInfo.gender}/>
                 </View>
               </View>
             </View>
@@ -423,6 +658,54 @@ const NurseDashboard = () => {
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
+  );
+};
+
+const HistoryTab = ({ history }) => {
+  if (!history) {
+    return <Text style={styles.noDataText}>No history available for this patient.</Text>;
+  }
+
+  const { ophthalmologyHistory, systemicHistory, allergyHistory, contactLensesHistory, surgicalHistory } = history;
+
+  // Helper function to render history sections dynamically
+  const renderHistorySection = (title, icon, data) => {
+    if (!data) return null; // ✅ Prevents errors for missing data
+    const filteredEntries = Object.entries(data).filter(
+      ([key, value]) =>
+        value &&
+        key !== "id" &&
+        key !== "patient_id" &&
+        key !== "created_at"
+    );
+    if (filteredEntries.length === 0) return null; // ✅ Skip empty sections
+    
+    return (
+      <View style={styles.card} key={title}>
+        <View style={styles.cardHeader}>
+          {icon}
+          <Text style={styles.cardHeaderTitle}>{title}</Text>
+        </View>
+        <View style={styles.cardContent}>
+          {filteredEntries.map(([key, value]) => (
+            <View key={key} style={styles.historyItem}>
+              <Text style={styles.historyLabel}>{key.replace(/_/g, " ")}</Text>
+              <Text style={styles.historyValue}>{value ? "✔️" : "❌"}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <ScrollView style={styles.historyContainer}>
+      {renderHistorySection("Ophthalmology History", <Text>👁️</Text>, ophthalmologyHistory)}
+      {renderHistorySection("Systemic History", <Text>🩸</Text>, systemicHistory)}
+      {renderHistorySection("Allergy History", <Text>🤧</Text>, allergyHistory)}
+      {renderHistorySection("Contact Lenses History", <Text>👓</Text>, contactLensesHistory)}
+      {renderHistorySection("Eye Surgical History", <Text>🏥</Text>, surgicalHistory)}
+    </ScrollView>
   );
 };
 
@@ -727,6 +1010,47 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 20,
+  },
+  historyContainer: {
+    padding: 15,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  cardHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  cardContent: {
+    paddingVertical: 5,
+  },
+  historyItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  historyLabel: {
+    fontSize: 16,
+    color: "#555",
+  },
+  historyValue: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 
