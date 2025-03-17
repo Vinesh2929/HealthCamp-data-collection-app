@@ -30,11 +30,96 @@ const app = express();
 app.use(
   cors({
     origin: "*", // Allow all origins (use specific origins in production)
-    methods: ["GET", "POST"], // Allow POST and GET
+    methods: ["GET", "POST", "PUT"], // Adding PUT method also
     allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
   })
 );
 app.use(bodyParser.json());
+
+// ===================================================
+// IMPORTANT: THIS IS THE FIXED LOGIN ROUTE
+// I've removed the duplicate login route that was at the bottom of the file
+// and fixed this one to properly handle the hardcoded admin
+// ===================================================
+app.post("/login", async (req, res) => {
+  // Debug logging to see what's being received
+  console.log("Login attempt received:", req.body);
+  
+  const { email, password, role } = req.body;
+
+  // HARDCODED ADMIN - This bypasses all database checks
+  // ===================================================
+  if (email === "admin@healthcamp.com" && password === "admin123" && role === "admin") {
+    console.log("✅ HARDCODED ADMIN LOGIN SUCCESSFUL");
+    
+    // Generate JWT token for hardcoded admin
+    const token = jwt.sign(
+      { user_id: 999, role: "admin" },
+      process.env.JWT_SECRET || "fallback-secret-key", // Fallback in case JWT_SECRET is not set
+      { expiresIn: "1h" }
+    );
+    
+    return res.status(200).json({ 
+      message: "Login successful", 
+      token, 
+      role: "admin", 
+      user_id: 999 
+    });
+  }
+  
+  // If we get here, it's not the hardcoded admin - use regular auth flow
+  // ===================================================
+  try {
+    // 🔹 Check if user exists in the `nurses` table
+    const nurseResult = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
+    if (nurseResult.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const nurse = nurseResult.rows[0];
+
+    // 🔹 Validate password
+    const isMatch = await bcrypt.compare(password, nurse.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // 🔹 Retrieve the user's role status from `users` table
+    const userResult = await pool.query(
+      "SELECT user_id, COALESCE(volunteer, 0) AS volunteer, COALESCE(practitioner, 0) AS practitioner, COALESCE(admin, 0) AS admin FROM users WHERE user_id = $1",
+      [nurse.nurse_id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User role not found. Please contact admin." });
+    }
+
+    const user = userResult.rows[0];
+
+    console.log(`🛠 Checking roles: User ID ${user.user_id}, Volunteer: ${user.volunteer}, Practitioner: ${user.practitioner}, Admin: ${user.admin}`);
+
+    // 🔹 Check if the selected role is properly authorized (should be `1`)
+    if (
+      (role === "practitioner" && parseInt(user.practitioner) !== 1) ||
+      (role === "volunteer" && parseInt(user.volunteer) !== 1) ||
+      (role === "admin" && parseInt(user.admin) !== 1)
+    ) {
+      return res.status(403).json({ message: "Your selected role is not authorized. Request approval from an admin." });
+    }
+
+    // 🔹 Generate JWT token
+    const token = jwt.sign({ user_id: user.user_id, role }, process.env.JWT_SECRET || "fallback-secret-key", { expiresIn: "1h" });
+
+    res.json({ message: "Login successful", token, role, user_id: user.user_id });
+  } catch (error) {
+    console.error("❌ Error logging in:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ===================================================
+// The rest of your routes below - no changes needed
+// ===================================================
 
 app.get("/percentage-diabetes/:village", async (req, res) => {
   const { village } = req.params;
@@ -68,84 +153,8 @@ app.get("/percentage-diabetes/:village", async (req, res) => {
 });
 
 /*app.post("/add-patient", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN"); // Start transaction
-    const {
-      fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num,  
-      medicalHistory, visionHistory, socialHistory,
-      familyHistory, currentSymptoms, examinationData
-    } = req.body;
-    // Insert Patient Basic Info
-    const patientResult = await client.query(
-      `INSERT INTO patients 
-      (fname, lname, age, gender, address, village, date, worker_name, dob, id, phone_num) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-      RETURNING patient_id`,
-    [fname, lname, age, gender, address, village, date, worker_name, DOB, id, phone_num]
-    );
-    const patient_id = patientResult.rows[0].patient_id;
-    console.log("✅ Inserted Patient ID:", patient_id);
-    // Insert Medical History
-    const medicalResult = await client.query(
-      "INSERT INTO medicalhistory (patient_id, diabetes, hypertension) VALUES ($1, $2, $3) RETURNING medical_id",
-      [patient_id, medicalHistory.diabetes, medicalHistory.hypertension]
-    );
-    const medical_id = medicalResult.rows[0].medical_id;
-    // Insert Allergies (One row per allergy)
-    for (let allergy of medicalHistory.allergies) {
-      if (allergy.trim() !== "") {
-          await client.query(
-          "INSERT INTO allergies (medical_id, allergy) VALUES ($1, $2)",
-          [medical_id, allergy]
-          );
-      }
-    }
-    // Insert Medications (One row per medication)
-    for (let medication of medicalHistory.medications) {
-      if (medication.trim() !== "") {
-          await client.query(
-              "INSERT INTO medications (medical_id, medication) VALUES ($1, $2)",
-              [medical_id, medication]
-          );
-      }
-    }
-    // Insert Vision History
-    await client.query(
-      "INSERT INTO visionhistory (patient_id, vision_type, eyewear, injuries) VALUES ($1, $2, $3, $4)",
-      [patient_id, visionHistory.visionType, visionHistory.eyewear, visionHistory.injuries]
-    );
-    // Insert Social History
-    await client.query(
-      "INSERT INTO socialhistory (patient_id, smoking, drinking) VALUES ($1, $2, $3)",
-      [patient_id, socialHistory.smoking, socialHistory.drinking]
-    );
-    // Insert Family History
-    await client.query(
-      "INSERT INTO familyhistory (patient_id, family_htn, family_dm) VALUES ($1, $2, $3)",
-      [patient_id, familyHistory.familyHtn, familyHistory.familyDm]
-    );
-    // Insert Current Symptoms
-    await client.query(
-      "INSERT INTO currentsymptoms (patient_id, redness, vision_issues, headaches, dry_eyes, light_sensitivity, prescription) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [patient_id, currentSymptoms.redness, currentSymptoms.visionIssues, currentSymptoms.headaches, currentSymptoms.dryEyes, currentSymptoms.lightSensitivity, currentSymptoms.prescription]
-    );
-    // Insert Examination Data
-    await client.query(
-      "INSERT INTO examinationdata (patient_id, blood_pressure, heart_rate, oxygen_saturation, blood_glucose, body_temperature, vision_score, refraction_values) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [patient_id, examinationData.bloodPressure, examinationData.heartRate, examinationData.oxygenSaturation, examinationData.bloodGlucose, examinationData.bodyTemperature, examinationData.visionScore, examinationData.refractionValues]
-    );
-    await client.query("COMMIT"); // Commit transaction
-    res.status(201).json({ message: "Patient information saved!", patient_id });
-  } catch (error) {
-    await client.query("ROLLBACK"); // Rollback if error occurs
-    console.error("❌ Error saving patient info:", error.stack);
-    res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
-  }
-}); 
-*/
+  // Commented out as per original code
+}); */
 
 // general function to let the api be set to 0.5 to show that it is in progress
 async function updateStation(patientId, stationColumn) {
@@ -354,16 +363,43 @@ app.get("/get-station-2-info/:patientId", async (req, res) => {
 
 app.post("/submit-station-2", async (req, res) => {
   const client = await pool.connect();
-  const patientId = 1901; // HARD-CODED Patient ID (replace this later)
 
   try {
     const {
+      patient_id,
       ophthalmologyHistory,
       systemicHistory,
       allergyHistory,
       contactLensesHistory,
       surgicalHistory,
     } = req.body;
+
+    console.log("📥 Received Patient ID:", patient_id);
+
+    if (!patient_id) {
+      console.error("❌ Error: Missing patient ID in request.");
+      return res.status(400).json({ error: "Patient ID is required." });
+    }
+
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      console.error("❌ Error: Patient ID does not exist in the patients table.");
+      return res.status(400).json({ error: "Invalid patient ID, patient not found." });
+    }
+
+    const duplicateCheck = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      console.warn("⚠️ Duplicate Submission Attempted.");
+      return res.status(400).json({ error: "Form has already been submitted for this patient." });
+    }
 
     // Begin Transaction
     await client.query("BEGIN");
@@ -373,7 +409,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO ophthalmology_history (patient_id, loss_of_vision, loss_of_vision_eye, loss_of_vision_onset, pain, duration, redness, redness_eye, redness_onset, redness_pain, redness_duration, watering, watering_eye, watering_onset, watering_pain, watering_duration, discharge_type, itching, itching_eye, itching_duration, pain_symptom, pain_symptom_eye, pain_symptom_onset, pain_symptom_duration) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
       [
-        patientId,
+        patient_id,
         ophthalmologyHistory.lossOfVision,
         ophthalmologyHistory.lossOfVisionEye,
         ophthalmologyHistory.lossOfVisionOnset,
@@ -405,7 +441,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO systemic_history (patient_id, hypertension, diabetes, heart_disease) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         systemicHistory.hypertension,
         systemicHistory.diabetes,
         systemicHistory.heartDisease,
@@ -417,7 +453,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO allergy_history (patient_id, drops_allergy, tablets_allergy, seasonal_allergy) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         allergyHistory.dropsAllergy,
         allergyHistory.tabletsAllergy,
         allergyHistory.seasonalAllergy,
@@ -429,7 +465,7 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO contact_lenses_history (patient_id, uses_contact_lenses, usage_years, frequency) 
       VALUES ($1, $2, $3, $4)`,
       [
-        patientId,
+        patient_id,
         contactLensesHistory.usesContactLenses,
         contactLensesHistory.usageYears || null,
         contactLensesHistory.frequency,
@@ -441,15 +477,22 @@ app.post("/submit-station-2", async (req, res) => {
       `INSERT INTO surgical_history (patient_id, cataract_or_injury, retinal_lasers) 
       VALUES ($1, $2, $3)`,
       [
-        patientId,
+        patient_id,
         surgicalHistory.cataractOrInjury,
         surgicalHistory.retinalLasers,
       ]
     );
 
     await client.query(
-      `UPDATE completion1 SET "station2" = 1 WHERE patient_id = $1`,
-      [patientId]
+      `INSERT INTO completion1 (patient_id) VALUES ($1) 
+       ON CONFLICT (patient_id) DO NOTHING`,
+      [patient_id]
+    );
+
+    // 🔹 Mark Station 2 as "Complete"
+    await client.query(
+      `UPDATE completion1 SET station2 = 1 WHERE patient_id = $1`,
+      [patient_id]
     );
 
     // Commit Transaction
@@ -536,59 +579,6 @@ app.post("/register", async (req, res) => {
   }
 });
 
-//LOGIN USERS 
-app.post("/login", async (req, res) => {
-  const { email, password, role } = req.body;
-
-  try {
-    // 🔹 Check if user exists in the `nurses` table
-    const nurseResult = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
-    if (nurseResult.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    const nurse = nurseResult.rows[0];
-
-    // 🔹 Validate password
-    const isMatch = await bcrypt.compare(password, nurse.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // 🔹 Retrieve the user's role status from `users` table
-    const userResult = await pool.query(
-      "SELECT user_id, COALESCE(volunteer, 0) AS volunteer, COALESCE(practitioner, 0) AS practitioner, COALESCE(admin, 0) AS admin FROM users WHERE user_id = $1",
-      [nurse.nurse_id]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: "User role not found. Please contact admin." });
-    }
-
-    const user = userResult.rows[0];
-
-    console.log(`🛠 Checking roles: User ID ${user.user_id}, Volunteer: ${user.volunteer}, Practitioner: ${user.practitioner}, Admin: ${user.admin}`);
-
-    // 🔹 Check if the selected role is properly authorized (should be `1`)
-    if (
-      (role === "practitioner" && parseInt(user.practitioner) !== 1) ||
-      (role === "volunteer" && parseInt(user.volunteer) !== 1) ||
-      (role === "admin" && parseInt(user.admin) !== 1)
-    ) {
-      return res.status(403).json({ message: "Your selected role is not authorized. Request approval from an admin." });
-    }
-
-    // 🔹 Generate JWT token
-    const token = jwt.sign({ user_id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ message: "Login successful", token, role, user_id: user.user_id });
-  } catch (error) {
-    console.error("❌ Error logging in:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-
 //ADMIN AUTHORIZATION: Get Pending Users (role = 0.5)
 app.get("/pending-users", async (req, res) => {
   try {
@@ -662,8 +652,469 @@ app.put("/update-role-progress/:user_id/:role", async (req, res) => {
   }
 });
 
+app.get("/get-patient-info/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { adharNumber } = req.params;
+
+    const result = await client.query(
+      `SELECT fname, lname, age, gender, address, village, date, worker_name, dob, phone_num, adhar_number FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({error: "Patient not found"});
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching patient data", error);
+    res.status(500).json({ error: error.message});
+  } finally {
+    client.release();
+  }
+})
+
+app.get("/get-patient-id/:adharNumber", async (req, res) => {
+  const client = await pool.connect();
+  const { adharNumber } = req.params;
+
+  try {
+    const result = await client.query(
+      `SELECT patient_id FROM patients WHERE adhar_number = $1`,
+      [adharNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+
+    res.status(200).json({ patient_id: result.rows[0].patient_id });
+  } catch (error) {
+    console.error("❌ Error fetching patient ID:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+
+app.get("/get-patient-history/:patient_id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { patient_id } = req.params;
+
+    // ✅ Check if patient exists
+    const patientCheck = await client.query(
+      `SELECT patient_id FROM patients WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    if (patientCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Patient not found." });
+    }
+
+    // ✅ Retrieve data from all tables
+    const ophthalmologyHistory = await client.query(
+      `SELECT * FROM ophthalmology_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const systemicHistory = await client.query(
+      `SELECT * FROM systemic_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const allergyHistory = await client.query(
+      `SELECT * FROM allergy_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const contactLensesHistory = await client.query(
+      `SELECT * FROM contact_lenses_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    const surgicalHistory = await client.query(
+      `SELECT * FROM surgical_history WHERE patient_id = $1`,
+      [patient_id]
+    );
+
+    // ✅ Check if history exists (otherwise return empty defaults)
+    const patientHistory = {
+      ophthalmologyHistory: ophthalmologyHistory.rows[0] || {},
+      systemicHistory: systemicHistory.rows[0] || {},
+      allergyHistory: allergyHistory.rows[0] || {},
+      contactLensesHistory: contactLensesHistory.rows[0] || {},
+      surgicalHistory: surgicalHistory.rows[0] || {},
+    };
+
+    res.status(200).json(patientHistory);
+
+  } catch (error) {
+    console.error("❌ Error fetching patient history:", error);
+    res.status(500).json({ error: "Failed to retrieve patient history." });
+  } finally {
+    client.release();
+  }
+});
+// Add this temporary endpoint to get table information
+app.get("/db-schema", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // Get all tables
+    const tableQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+    `;
+    const tables = await client.query(tableQuery);
+    
+    // Get columns for each table
+    const schema = {};
+    for (const table of tables.rows) {
+      const tableName = table.table_name;
+      
+      const columnQuery = `
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = $1
+        ORDER BY ordinal_position;
+      `;
+      const columns = await client.query(columnQuery, [tableName]);
+      
+      schema[tableName] = columns.rows;
+    }
+    
+    res.status(200).json(schema);
+  } catch (error) {
+    console.error("Error fetching schema:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Add these endpoints to your server.js file
+
+// Get disease trends over time
+app.get("/disease-trends/:timeframe", async (req, res) => {
+  const { timeframe } = req.params; // "week", "month", or "year"
+  const client = await pool.connect();
+  
+  try {
+    // Different SQL queries based on the requested timeframe
+    let query;
+    
+    if (timeframe === "week") {
+      // Last 7 days data, grouped by day
+      query = `
+        SELECT 
+          TO_CHAR(p.date, 'YYYY-MM-DD') AS date_group,
+          p.village,
+          COUNT(p.patient_id) AS total_patients,
+          COUNT(CASE WHEN s.diabetes = true THEN 1 END) AS diabetes_count,
+          COUNT(CASE WHEN s.hypertension = true THEN 1 END) AS hypertension_count,
+          COUNT(CASE WHEN s.heart_disease = true THEN 1 END) AS heart_disease_count
+        FROM 
+          patients p
+        LEFT JOIN 
+          systemic_history s ON p.patient_id = s.patient_id
+        WHERE 
+          p.date >= CURRENT_DATE - INTERVAL '7 days'
+        GROUP BY 
+          date_group, p.village
+        ORDER BY 
+          date_group, p.village
+      `;
+    } else if (timeframe === "month") {
+      // Last 30 days data, grouped by week
+      query = `
+        SELECT 
+          TO_CHAR(DATE_TRUNC('week', p.date), 'YYYY-MM-DD') AS date_group,
+          p.village,
+          COUNT(p.patient_id) AS total_patients,
+          COUNT(CASE WHEN s.diabetes = true THEN 1 END) AS diabetes_count,
+          COUNT(CASE WHEN s.hypertension = true THEN 1 END) AS hypertension_count,
+          COUNT(CASE WHEN s.heart_disease = true THEN 1 END) AS heart_disease_count
+        FROM 
+          patients p
+        LEFT JOIN 
+          systemic_history s ON p.patient_id = s.patient_id
+        WHERE 
+          p.date >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY 
+          date_group, p.village
+        ORDER BY 
+          date_group, p.village
+      `;
+    } else { // year
+      // Last 12 months data, grouped by month
+      query = `
+        SELECT 
+          TO_CHAR(DATE_TRUNC('month', p.date), 'YYYY-MM') AS date_group,
+          p.village,
+          COUNT(p.patient_id) AS total_patients,
+          COUNT(CASE WHEN s.diabetes = true THEN 1 END) AS diabetes_count,
+          COUNT(CASE WHEN s.hypertension = true THEN 1 END) AS hypertension_count,
+          COUNT(CASE WHEN s.heart_disease = true THEN 1 END) AS heart_disease_count
+        FROM 
+          patients p
+        LEFT JOIN 
+          systemic_history s ON p.patient_id = s.patient_id
+        WHERE 
+          p.date >= CURRENT_DATE - INTERVAL '1 year'
+        GROUP BY 
+          date_group, p.village
+        ORDER BY 
+          date_group, p.village
+      `;
+    }
+
+    const result = await client.query(query);
+    
+    // Format data for chart
+    const formattedData = {
+      labels: [],
+      datasets: [],
+      villages: []
+    };
+    
+    // Group by village
+    const villageData = {};
+    
+    result.rows.forEach(row => {
+      if (!villageData[row.village]) {
+        villageData[row.village] = {
+          diabetes: [],
+          hypertension: [],
+          heart_disease: []
+        };
+        formattedData.villages.push(row.village);
+      }
+      
+      // Add date to labels if not already there
+      if (!formattedData.labels.includes(row.date_group)) {
+        formattedData.labels.push(row.date_group);
+      }
+      
+      // Calculate percentages
+      const diabetesPercentage = row.total_patients > 0 
+        ? ((row.diabetes_count / row.total_patients) * 100).toFixed(1) 
+        : 0;
+        
+      const hypertensionPercentage = row.total_patients > 0 
+        ? ((row.hypertension_count / row.total_patients) * 100).toFixed(1) 
+        : 0;
+        
+      const heartDiseasePercentage = row.total_patients > 0 
+        ? ((row.heart_disease_count / row.total_patients) * 100).toFixed(1) 
+        : 0;
+      
+      villageData[row.village].diabetes.push(parseFloat(diabetesPercentage));
+      villageData[row.village].hypertension.push(parseFloat(hypertensionPercentage));
+      villageData[row.village].heart_disease.push(parseFloat(heartDiseasePercentage));
+    });
+    
+    // Create datasets for each village and disease
+    Object.keys(villageData).forEach((village, index) => {
+      // Colors for different villages
+      const colors = [
+        ['rgba(255, 69, 0, 1)', 'rgba(255, 69, 0, 0.7)', 'rgba(255, 69, 0, 0.4)'],  // Red/Orange
+        ['rgba(34, 139, 34, 1)', 'rgba(34, 139, 34, 0.7)', 'rgba(34, 139, 34, 0.4)'], // Green
+        ['rgba(65, 105, 225, 1)', 'rgba(65, 105, 225, 0.7)', 'rgba(65, 105, 225, 0.4)'], // Blue
+        ['rgba(128, 0, 128, 1)', 'rgba(128, 0, 128, 0.7)', 'rgba(128, 0, 128, 0.4)']  // Purple
+      ];
+      
+      formattedData.datasets.push({
+        village: village,
+        disease: 'Diabetes',
+        data: villageData[village].diabetes,
+        strokeWidth: 3,
+        color: (opacity = 1) => colors[index % colors.length][0].replace('1)', `${opacity})`),
+      });
+      
+      formattedData.datasets.push({
+        village: village,
+        disease: 'Hypertension',
+        data: villageData[village].hypertension,
+        strokeWidth: 3,
+        color: (opacity = 1) => colors[index % colors.length][1].replace('1)', `${opacity})`),
+      });
+      
+      formattedData.datasets.push({
+        village: village,
+        disease: 'Heart Disease',
+        data: villageData[village].heart_disease,
+        strokeWidth: 3,
+        color: (opacity = 1) => colors[index % colors.length][2].replace('1)', `${opacity})`),
+      });
+    });
+
+    // Get overall patient and disease counts
+    const countQuery = `
+      SELECT 
+        COUNT(DISTINCT p.patient_id) AS total_patients,
+        COUNT(DISTINCT CASE WHEN s.diabetes = true THEN p.patient_id END) AS total_diabetes,
+        COUNT(DISTINCT CASE WHEN s.hypertension = true THEN p.patient_id END) AS total_hypertension,
+        COUNT(DISTINCT CASE WHEN s.heart_disease = true THEN p.patient_id END) AS total_heart_disease
+      FROM patients p
+      LEFT JOIN systemic_history s ON p.patient_id = s.patient_id
+    `;
+    
+    const countResult = await client.query(countQuery);
+    const summary = countResult.rows[0];
+    
+    res.status(200).json({ 
+      chartData: formattedData,
+      summary: summary
+    });
+    
+  } catch (error) {
+    console.error("❌ Error fetching disease trends:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Get staff count for admin dashboard
+app.get("/staff-count", async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    // Count both nurses and volunteers
+    const nursesResult = await client.query("SELECT COUNT(*) AS nurse_count FROM nurses");
+    const volunteersResult = await client.query("SELECT COUNT(*) AS volunteer_count FROM volunteers");
+    
+    const nurseCount = parseInt(nursesResult.rows[0].nurse_count);
+    const volunteerCount = parseInt(volunteersResult.rows[0].volunteer_count);
+    
+    res.status(200).json({ 
+      count: nurseCount + volunteerCount,
+      nurseCount: nurseCount,
+      volunteerCount: volunteerCount
+    });
+  } catch (error) {
+    console.error("❌ Error fetching staff count:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Get patient count for admin dashboard
+app.get("/patient-count", async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query("SELECT COUNT(DISTINCT patient_id) AS patient_count FROM patients");
+    res.status(200).json({ count: parseInt(result.rows[0].patient_count) });
+  } catch (error) {
+    console.error("❌ Error fetching patient count:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Get disease distribution by village
+app.get("/disease-distribution", async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const query = `
+      SELECT 
+        p.village,
+        COUNT(DISTINCT p.patient_id) AS total_patients,
+        COUNT(DISTINCT CASE WHEN s.diabetes = true THEN p.patient_id END) AS diabetes_count,
+        COUNT(DISTINCT CASE WHEN s.hypertension = true THEN p.patient_id END) AS hypertension_count,
+        COUNT(DISTINCT CASE WHEN s.heart_disease = true THEN p.patient_id END) AS heart_disease_count
+      FROM patients p
+      LEFT JOIN systemic_history s ON p.patient_id = s.patient_id
+      GROUP BY p.village
+      ORDER BY total_patients DESC
+    `;
+    
+    const result = await client.query(query);
+    
+    // Format the data for the chart
+    const data = result.rows.map(row => {
+      const totalPatients = parseInt(row.total_patients);
+      
+      return {
+        village: row.village,
+        totalPatients: totalPatients,
+        diabetesPercentage: totalPatients > 0 
+          ? ((parseInt(row.diabetes_count) / totalPatients) * 100).toFixed(1) 
+          : 0,
+        hypertensionPercentage: totalPatients > 0 
+          ? ((parseInt(row.hypertension_count) / totalPatients) * 100).toFixed(1) 
+          : 0,
+        heartDiseasePercentage: totalPatients > 0 
+          ? ((parseInt(row.heart_disease_count) / totalPatients) * 100).toFixed(1) 
+          : 0
+      };
+    });
+    
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("❌ Error fetching disease distribution:", error.stack);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+
+// Add this temporary endpoint to your server.js
+app.get("/add-test-patients", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // First, insert 5 new patients
+    await client.query(`
+      INSERT INTO patients (fname, lname, age, gender, address, village, date, worker_name, dob, phone_num)
+      VALUES 
+        ('Raj', 'Patel', 45, 'Male', '23 Main Road', 'Sundarpur', CURRENT_DATE, 'Health Worker', '1980-01-15', '9876543210'),
+        ('Priya', 'Sharma', 52, 'Female', '45 Lake View', 'Gopalnagar', CURRENT_DATE, 'Health Worker', '1972-03-22', '8765432109'),
+        ('Arjun', 'Mehta', 38, 'Male', '12 Station Road', 'Sundarpur', CURRENT_DATE, 'Health Worker', '1987-07-10', '7654321098'),
+        ('Lakshmi', 'Reddy', 61, 'Female', '78 Temple Street', 'Krishnapur', CURRENT_DATE, 'Health Worker', '1964-11-05', '6543210987'),
+        ('Mohan', 'Singh', 56, 'Male', '34 River Road', 'Gopalnagar', CURRENT_DATE, 'Health Worker', '1968-09-18', '5432109876')
+    `);
+    
+    // Get the newly inserted patient IDs
+    const patientResult = await client.query(`
+      SELECT patient_id FROM patients 
+      WHERE 
+        (fname = 'Raj' AND lname = 'Patel') OR
+        (fname = 'Priya' AND lname = 'Sharma') OR
+        (fname = 'Arjun' AND lname = 'Mehta') OR
+        (fname = 'Lakshmi' AND lname = 'Reddy') OR
+        (fname = 'Mohan' AND lname = 'Singh')
+      ORDER BY patient_id DESC 
+      LIMIT 5
+    `);
+    
+    // Insert systemic_history records for each patient
+    for (const row of patientResult.rows) {
+      await client.query(`
+        INSERT INTO systemic_history (patient_id, diabetes, hypertension, heart_disease)
+        VALUES ($1, TRUE, FALSE, FALSE)
+      `, [row.patient_id]);
+    }
+    
+    res.status(200).json({ message: "Added 5 test patients with diabetes" });
+  } catch (error) {
+    console.error("Error adding test patients:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
 // Start Server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -1,3 +1,18 @@
 {
-    "dbcode.connections": []
+    "dbcode.connections": [
+        {
+            "connectionId": "xRcYZWlfljYQl8qxfMaxs",
+            "name": "Vinesh",
+            "driver": "yugabyte",
+            "host": "us-east-1.ebcdf680-2d1c-4742-8224-d596859f5113.aws.yugabyte.cloud",
+            "port": 5433,
+            "ssl": false,
+            "username": "admin",
+            "password": "",
+            "savePassword": "secretStorage",
+            "database": "postgres",
+            "connectionTimeout": 30,
+            "connectionType": "host"
+        }
+    ]
 }
