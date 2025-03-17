@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, ScrollView, TouchableOpacity, CheckBox, StyleSheet } from "react-native";
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Switch, StyleSheet } from "react-native";
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:5001";
@@ -62,17 +62,17 @@ const SiteManagement = () => {
             </TouchableOpacity>
             {expandedUser === user.user_id && (
               <View style={styles.userDetails}>
-                <Text>Email: {user.email}</Text>
+                <Text style={styles.userEmail}>Email: {user.email}</Text>
                 <View style={styles.roleContainer}>
-                  <Text>Roles:</Text>
+                  <Text style={styles.roleHeader}>Roles:</Text>
                   <View style={styles.checkboxContainer}>
-                    {['volunteer', 'practitioner', 'admin'].map((role) => (
+                    {["volunteer", "practitioner", "admin"].map((role) => (
                       <View key={role} style={styles.checkboxRow}>
-                        <CheckBox
+                        <Switch
                           value={user[role] === 1}
                           onValueChange={() => toggleRole(user.user_id, role, user[role])}
                         />
-                        <Text>{role.charAt(0).toUpperCase() + role.slice(1)}</Text>
+                        <Text style={styles.roleText}>{role.charAt(0).toUpperCase() + role.slice(1)}</Text>
                       </View>
                     ))}
                   </View>
@@ -125,20 +125,40 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#333",
   },
   userDetails: {
     marginTop: 10,
+    padding: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  userEmail: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 8,
   },
   roleContainer: {
     marginTop: 10,
   },
+  roleHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
   checkboxContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+    flexDirection: "column",
   },
   checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 5,
+  },
+  roleText: {
+    marginLeft: 8,
+    fontSize: 16,
   },
 });
 
