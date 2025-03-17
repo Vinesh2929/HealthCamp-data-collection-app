@@ -37,13 +37,14 @@ const initialChartData = {
 
 // Color mappings for different diseases
 const diseaseColors = {
-  "Diabetes": (opacity = 1) => `rgba(255, 69, 0, ${opacity})`,      // Orange
-  "Hypertension": (opacity = 1) => `rgba(34, 139, 34, ${opacity})`, // Green
-  "Heart Disease": (opacity = 1) => `rgba(65, 105, 225, ${opacity})`, // Blue
-  "Vision Problems": (opacity = 1) => `rgba(128, 0, 128, ${opacity})`, // Purple
-  "Respiratory Issues": (opacity = 1) => `rgba(220, 20, 60, ${opacity})`, // Crimson
-  "All Diseases": (opacity = 1) => `rgba(70, 70, 70, ${opacity})` // Gray
+  "Diabetes": (opacity = 1) => `rgba(229, 206, 220, ${opacity})`, // #E5CEDC (Light Pink)
+  "Hypertension": (opacity = 1) => `rgba(155, 114, 207, ${opacity})`, // #9B72CF (Purple)
+  "Heart Disease": (opacity = 1) => `rgba(65, 105, 225, ${opacity})`, // #4169E1 (Blue - Kept)
+  "Vision Problems": (opacity = 1) => `rgba(15, 163, 177, ${opacity})`, // #0FA3B1 (Teal)
+  "Respiratory Issues": (opacity = 1) => `rgba(244, 211, 94, ${opacity})`, // #F4D35E (Yellow)
+  "All Diseases": (opacity = 1) => `rgba(70, 70, 70, ${opacity})` // Gray (Kept)
 };
+
 
 const AdminDashboard = () => {
   const router = useRouter();
@@ -524,28 +525,29 @@ const AdminDashboard = () => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: "#EDEDE9" 
+    backgroundColor: "#F9F7F3" 
   },
   navbar: { 
     flexDirection: "row", 
     alignItems: "center", 
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E8" 
+    borderBottomColor: "#DBE4EE" 
   },
   header: { 
     fontSize: 22, 
     fontWeight: "bold", 
-    marginLeft: 15 
+    marginLeft: 15,
+    color: "#293241"
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(41, 50, 65, 0.5)", // #293241 with opacity
   },
   modalContent: {
-    backgroundColor: "white",
+    backgroundColor: "#F9F7F3",
     padding: 20,
     borderRadius: 10,
     alignItems: "center",
@@ -554,7 +556,7 @@ const styles = StyleSheet.create({
   menuButton: {
     marginVertical: 10,
     padding: 10,
-    backgroundColor: "#D5BDAF",
+    backgroundColor: "#3E7CB1",
     borderRadius: 8,
     width: '100%',
   },
@@ -573,10 +575,10 @@ const styles = StyleSheet.create({
     marginBottom: 20 
   },
   statBox: {
-    backgroundColor: "#F5EBE0",
+    backgroundColor: "#DBE4EE",
     padding: 20,
     borderRadius: 12,
-    shadowColor: "#000",
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -589,32 +591,35 @@ const styles = StyleSheet.create({
   statTitle: { 
     fontSize: 16, 
     fontWeight: "bold", 
-    textAlign: "center" 
+    textAlign: "center",
+    color: "#293241"
   },
   statValue: { 
     fontSize: 22, 
     fontWeight: "bold", 
-    color: "#D5BDAF", 
+    color: "#3E7CB1", 
     textAlign: "center", 
     marginTop: 8 
   },
   graphContainer: { 
-    backgroundColor: "#D8E2DC", 
+    backgroundColor: "#98C1D9", 
+    alignItems:'center',
     padding: 15, 
     borderRadius: 12,
     marginBottom: 20,
-    shadowColor: "#000",
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    zIndex: 1, // Ensure dropdown appears above other elements
+    zIndex: 1,
   },
   graphTitle: { 
     fontSize: 18, 
     fontWeight: "bold", 
     marginVertical: 10, 
-    textAlign: 'center' 
+    textAlign: 'center',
+    color: "#293241"
   },
   chart: { 
     borderRadius: 8, 
@@ -627,20 +632,22 @@ const styles = StyleSheet.create({
   explanationText: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: '#555',
+    color: '#293241',
   },
   timeframeContainer: { 
-    marginBottom: 15 
+    marginBottom: 15,
+    width:'100%' 
   },
   selectorLabel: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 8,
+    color: "#293241"
   },
   buttonGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#E8E8E8',
+    backgroundColor: '#DBE4EE',
     borderRadius: 8,
     padding: 2,
   },
@@ -651,8 +658,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   selectedTimeButton: {
-    backgroundColor: 'white',
-    shadowColor: "#000",
+    backgroundColor: '#F9F7F3',
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -660,24 +667,24 @@ const styles = StyleSheet.create({
   },
   timeButtonText: {
     fontSize: 12,
-    color: '#555',
+    color: '#293241',
   },
   selectedTimeButtonText: {
-    color: '#333',
+    color: '#3E7CB1',
     fontWeight: 'bold',
   },
   diseaseSelectorContainer: {
     marginBottom: 15,
-    zIndex: 2, // Ensure dropdown is above other elements
+    zIndex: 2,
   },
   dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
+    backgroundColor: '#F9F7F3',
     borderRadius: 8,
     padding: 12,
-    shadowColor: "#000",
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -686,16 +693,17 @@ const styles = StyleSheet.create({
   dropdownButtonText: {
     fontSize: 14,
     fontWeight: '500',
+    color: "#293241"
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 80, // Position below the dropdown button and label
+    top: 80,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: '#F9F7F3',
     borderRadius: 8,
     padding: 5,
-    shadowColor: "#000",
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -710,13 +718,15 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   selectedDropdownItem: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#DBE4EE',
   },
   dropdownItemText: {
     fontSize: 14,
+    color: "#293241"
   },
   selectedDropdownItemText: {
     fontWeight: 'bold',
+    color: "#3E7CB1"
   },
   diseaseColorIndicator: {
     width: 16,
@@ -731,7 +741,7 @@ const styles = StyleSheet.create({
   diseaseCountText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#555',
+    color: '#293241',
   },
   loadingContainer: { 
     height: 220, 
@@ -741,30 +751,30 @@ const styles = StyleSheet.create({
   loadingText: { 
     marginTop: 10, 
     fontSize: 16, 
-    color: '#666' 
+    color: '#3E7CB1' 
   },
   errorContainer: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#E5CEDC',
     borderRadius: 8,
     padding: 15,
     marginBottom: 20,
     alignItems: 'center',
   },
   errorText: {
-    color: '#D32F2F',
+    color: '#293241',
     marginBottom: 10,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#D5BDAF',
+    backgroundColor: '#3E7CB1',
     padding: 8,
     borderRadius: 5,
   },
   infoBox: {
-    backgroundColor: "#F5EBE0",
+    backgroundColor: "#E5CEDC",
     padding: 15,
     borderRadius: 12,
-    shadowColor: "#000",
+    shadowColor: "#293241",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -774,11 +784,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 8,
+    color: "#293241"
   },
   infoText: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#555",
+    color: "#293241",
   },
 });
 
