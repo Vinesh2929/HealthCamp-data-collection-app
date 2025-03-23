@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
-  const [diagnoses, setDiagnoses] = useState(patientInfo?.diagnoses || []);
+  const [diagnoses, setDiagnoses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [diagnosisCondition, setDiagnosisCondition] = useState('');
@@ -20,6 +20,7 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [appointments, setAppointments] = useState([]);
 
+  // Only run this effect when patientID or serverIP changes, not on every render
   useEffect(() => {
     if (patientID && serverIP) {
       fetchAppointments();
@@ -28,12 +29,16 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
   }, [patientID, serverIP]);
 
   const fetchAppointments = async () => {
+    if (!patientID || !serverIP) return;
+    
     try {
+      setLoading(true);
       const response = await fetch(`http://${serverIP}:5001/appointments/all/${patientID}`);
       if (!response.ok) {
         throw new Error("Failed to fetch appointments");
       }
       const data = await response.json();
+      
       // Format appointment dates for display
       const formattedAppointments = data.map(apt => {
         const date = new Date(apt.appointment_date);
@@ -48,10 +53,14 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
     } catch (error) {
       console.error("Error fetching appointments:", error);
       Alert.alert("Error", "Failed to load appointments");
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchDiagnoses = async () => {
+    if (!patientID || !serverIP) return;
+    
     setLoading(true);
     try {
       const response = await fetch(`http://${serverIP}:5001/diagnoses/${patientID}`);
@@ -59,9 +68,10 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
         throw new Error("Failed to fetch diagnoses");
       }
       const data = await response.json();
-      setDiagnoses(data);
+      setDiagnoses(data || []);
     } catch (error) {
       console.error("Error fetching diagnoses:", error);
+      Alert.alert("Error", "Failed to load diagnoses");
     } finally {
       setLoading(false);
     }
@@ -95,7 +105,27 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add diagnosis");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add diagnosis");
+      }
+
+      // After successfully adding diagnosis, also create a doctor note if there are notes
+      if (diagnosisNotes && diagnosisNotes.trim()) {
+        const notesResponse = await fetch(`http://${serverIP}:5001/doctor-notes/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id: patientID,
+            appointment_id: selectedAppointmentId,
+            notes: diagnosisNotes
+          }),
+        });
+        
+        if (!notesResponse.ok) {
+          console.warn("Notes were saved with diagnosis but encountered an issue");
+        }
       }
 
       // Refresh diagnoses list
@@ -110,13 +140,14 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
       Alert.alert("Success", "Diagnosis added successfully");
     } catch (error) {
       console.error("Error adding diagnosis:", error);
-      Alert.alert("Error", "Failed to add diagnosis");
+      Alert.alert("Error", error.message || "Failed to add diagnosis");
     } finally {
       setLoading(false);
     }
   };
 
-  const AddDiagnosisModal = () => (
+  // Separated modal component to improve readability
+  const renderDiagnosisModal = () => (
     <Modal
       animationType="slide"
       transparent={true}
@@ -156,7 +187,7 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
               <TextInput
                 style={styles.formInput}
                 value={diagnosisCondition}
-                onChangeText={setDiagnosisCondition}
+                onChangeText={(text) => setDiagnosisCondition(text)}
                 placeholder="Enter diagnosis condition"
               />
             </View>
@@ -168,7 +199,7 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
                 multiline
                 numberOfLines={4}
                 value={diagnosisNotes}
-                onChangeText={setDiagnosisNotes}
+                onChangeText={(text) => setDiagnosisNotes(text)}
                 placeholder="Add notes about the diagnosis..."
               />
             </View>
@@ -206,14 +237,16 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
           <Text style={styles.cardHeaderTitle}>Diagnosis Information</Text>
         </View>
         <View style={styles.cardContent}>
-          {loading ? (
+          {loading && !addModalVisible ? (
             <ActivityIndicator color="#3b82f6" size="large" style={styles.loader} />
           ) : diagnoses && diagnoses.length > 0 ? (
             diagnoses.map((diagnosis, index) => (
               <View key={index} style={styles.diagnosisItem}>
                 <View style={styles.diagnosisHeader}>
                   <Text style={styles.diagnosisCondition}>{diagnosis.condition}</Text>
-                  <Text style={styles.diagnosisDate}>{new Date(diagnosis.date).toLocaleDateString()}</Text>
+                  <Text style={styles.diagnosisDate}>
+                    {diagnosis.date ? new Date(diagnosis.date).toLocaleDateString() : 'N/A'}
+                  </Text>
                 </View>
                 {diagnosis.notes && (
                   <View style={styles.diagnosisNotes}>
@@ -236,7 +269,7 @@ const DiagnosisTab = ({ patientInfo, patientID, serverIP }) => {
         </View>
       </View>
       
-      <AddDiagnosisModal />
+      {renderDiagnosisModal()}
     </View>
   );
 };
