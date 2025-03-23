@@ -1510,6 +1510,158 @@ app.put("/appointments/update", async (req, res) => {
   }
 });
 
+
+
+
+app.post("/doctor-notes/create", async (req, res) => {
+  const { patient_id, appointment_id, notes } = req.body;
+
+  if (!patient_id || !appointment_id || !notes) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO doctor_notes (patient_id, appointment_id, notes, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING *`,
+      [patient_id, appointment_id, notes]
+    );
+    res.json({ message: "Note saved successfully", note: result.rows[0] });
+  } catch (error) {
+    console.error("Error saving doctor note:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+app.get("/doctor-notes/:appointment_id", async (req, res) => {
+  const { appointment_id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM doctor_notes WHERE appointment_id = $1 ORDER BY created_at DESC`,
+      [appointment_id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching doctor notes:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+app.get("/diagnoses/:patientId", async (req, res) => {
+  const { patientId } = req.params;
+  
+  try {
+    const query = `
+      SELECT d.*, a.appointment_date, n.doctor_notes 
+      FROM diagnoses d
+      LEFT JOIN appointments a ON d.appointment_id = a.appointment_id
+      LEFT JOIN doctor_notes n ON d.diagnosis_id = n.diagnosis_id
+      WHERE d.patient_id = $1
+      ORDER BY a.appointment_date DESC
+    `;
+    
+    const result = await pool.query(query, [patientId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching diagnoses:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// Create a new diagnosis with notes
+app.post("/diagnoses/create", async (req, res) => {
+  const { patient_id, appointment_id, condition, notes, date } = req.body;
+
+  if (!patient_id || !condition) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const diagnosisResult = await client.query(
+      `INSERT INTO diagnoses (patient_id, appointment_id, condition, date)
+       VALUES ($1, $2, $3, $4) RETURNING diagnosis_id`,
+      [patient_id, appointment_id, condition, date]
+    );
+
+    if (notes && notes.trim()) {
+      await client.query(
+        `INSERT INTO doctor_notes (patient_id, appointment_id, notes, created_at)
+         VALUES ($1, $2, $3, NOW())`,
+        [patient_id, appointment_id, notes]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: "Diagnosis created successfully", diagnosis_id: diagnosisResult.rows[0].diagnosis_id });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("Error creating diagnosis:", error);
+    res.status(500).json({ error: "Database error" });
+  } finally {
+    client.release();
+  }
+});
+
+
+// Get all appointments for a patient
+app.get("/diagnoses/:patientId", async (req, res) => {
+  const { patientId } = req.params;
+  
+  try {
+    const query = `
+      SELECT d.*, a.appointment_date, n.notes AS doctor_notes
+      FROM diagnoses d
+      LEFT JOIN appointments a ON d.appointment_id = a.appointment_id
+      LEFT JOIN doctor_notes n ON d.appointment_id = n.appointment_id
+      WHERE d.patient_id = $1
+      ORDER BY a.appointment_date DESC
+    `;
+    
+    const result = await pool.query(query, [patientId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching diagnoses:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+
+// Update notes for a diagnosis
+app.put("/doctor-notes/update", async (req, res) => {
+  const { appointment_id, notes } = req.body;
+
+  if (!appointment_id) {
+    return res.status(400).json({ error: "Appointment ID is required" });
+  }
+
+  try {
+    const checkResult = await pool.query(
+      "SELECT * FROM doctor_notes WHERE appointment_id = $1",
+      [appointment_id]
+    );
+
+    if (checkResult.rows.length > 0) {
+      // Update existing note
+      await pool.query(
+        "UPDATE doctor_notes SET notes = $1, created_at = NOW() WHERE appointment_id = $2",
+        [notes, appointment_id]
+      );
+    } else {
+      return res.status(404).json({ error: "No existing note found for this appointment" });
+    }
+
+    res.json({ message: "Doctor notes updated successfully" });
+  } catch (error) {
+    console.error("Error updating doctor note:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {

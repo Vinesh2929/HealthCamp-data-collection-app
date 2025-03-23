@@ -19,6 +19,7 @@ import AppointmentModal from '../components/AppointmentModal';
 import AppointmentHistoryModal from '../components/AppointmentHistoryModal';
 import axios from "axios";
 import RescheduleModal from '../components/RescheduleModal';
+import DiagnosisTab from '../components/DiagnosisTab';
 
 // Mock icons (in a real app, you'd use a library like @expo/vector-icons)
 const SearchIcon = () => (
@@ -387,6 +388,7 @@ const NurseDashboard = () => {
       setCreatingAppointment(false);
     }
   };
+  
 
   const TabContent = () => {
     switch (selectedTab) {
@@ -428,57 +430,14 @@ const NurseDashboard = () => {
               </View>
             </View>
   
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderTitleContainer}>
-                  <MedicalIcon />
-                  <Text style={styles.cardHeaderTitle}>Doctor Notes</Text>
-                </View>
-              </View>
-              <View style={styles.cardContent}>
-                <TextInput
-                  style={styles.notesInput}
-                  multiline
-                  numberOfLines={4}
-                  placeholder="Add notes about the patient's condition..."
-                  value={notes}
-                  onChangeText={setNotes}
-                />
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity style={styles.saveButton}>
-                    <Text style={styles.buttonText}>Save Notes</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+          
           </View>
         );
       case 'history':
         return patientInfo?.history ? <HistoryTab history={patientInfo.history} /> : <Text>No history available.</Text>;
       
-      case 'diagnosis':
-        return (
-          <View style={styles.tabContent}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardHeaderTitle}>Diagnosis Information</Text>
-              </View>
-              <View style={styles.cardContent}>
-                {patientInfo.diagnoses ? patientInfo.diagnoses.map((diagnosis, index) => (
-                  <View key={index} style={styles.diagnosisItem}>
-                    <Text style={styles.diagnosisCondition}>{diagnosis.condition}</Text>
-                    <Text style={styles.diagnosisDate}>{diagnosis.date}</Text>
-                  </View>
-                )) : (
-                  <Text style={styles.noDataText}>No diagnosis information available.</Text>
-                )}
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.buttonText}>Add New Diagnosis</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        );
+        case 'diagnosis':
+          return <DiagnosisTab patientInfo={patientInfo} patientID={patientID} serverIP={serverIP} />;
         case 'appointments':
           return (
             <AppointmentsTab
