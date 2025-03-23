@@ -121,7 +121,9 @@ const NurseDashboard = () => {
         adharNumber: adharNumber,
         dob: data.dob,
         appointmentDate: 'N/A',
-        history: data.medicalHistory
+        history: data.medicalHistory, 
+        diagnosis: data.diagnoses || [],
+        medications: data.medications || [],
       });
   
     } catch (error) {
@@ -241,39 +243,43 @@ const NurseDashboard = () => {
             </View>
           </View>
         );
-      case 'medicine':
-        return (
-          <View style={styles.tabContent}>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardHeaderTitle}>Medications</Text>
-              </View>
-              <View style={styles.cardContent}>
-                {patientInfo.medications.map((medication, index) => (
-                  <View key={index} style={styles.medicationItem}>
-                    <View style={styles.checkmarkContainer}>
-                      <View style={styles.checkmark}>
-                        <Text style={styles.checkmarkText}>✓</Text>
+        case 'medicine':
+          return (
+            <View style={styles.tabContent}>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardHeaderTitle}>Medications</Text>
+                </View>
+                <View style={styles.cardContent}>
+                  {patientInfo.medications ? (
+                    // If medications exists, map through them
+                    patientInfo.medications.map((medication, index) => (
+                      <View key={index} style={styles.medicationItem}>
+                        <View style={styles.checkmarkContainer}>
+                          <View style={styles.checkmark}>
+                            <Text style={styles.checkmarkText}>✓</Text>
+                          </View>
+                        </View>
+                        <View style={styles.medicationInfo}>
+                          <Text style={styles.medicationName}>{medication.name}</Text>
+                          <Text style={styles.medicationDetails}>
+                            {medication.dose}, {medication.instruction}
+                          </Text>
+                        </View>
+                        <Text style={styles.medicationDuration}>{medication.duration}</Text>
                       </View>
-                    </View>
-                    <View style={styles.medicationInfo}>
-                      <Text style={styles.medicationName}>{medication.name}</Text>
-                      <Text style={styles.medicationDetails}>
-                        {medication.dose}, {medication.instruction}
-                      </Text>
-                    </View>
-                    <Text style={styles.medicationDuration}>{medication.duration}</Text>
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.buttonText}>Prescribe New Medication</Text>
-                </TouchableOpacity>
+                    ))
+                  ) : (
+                    // If medications is undefined or empty
+                    <Text style={styles.noDataText}>No medication information available.</Text>
+                  )}
+                  <TouchableOpacity style={styles.addButton}>
+                    <Text style={styles.buttonText}>Prescribe New Medication</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        );
-      default:
-        return null;
+          );
     }
   };
 
