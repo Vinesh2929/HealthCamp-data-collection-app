@@ -1398,6 +1398,118 @@ app.get("/get-vision-test/:patient_id", async (req, res) => {
   }
 });
 
+app.get("/appointments/next/:patient_id", async (req, res) => {
+  const { patient_id } = req.params;
+
+  try {
+    // Get current time in IST by adding 5 hours and 30 minutes to UTC
+    const now = new Date();
+    const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // 5.5 hours in milliseconds
+    
+    const result = await pool.query(
+      `SELECT * FROM appointments 
+       WHERE patient_id = $1 AND appointment_date >= $2
+       ORDER BY appointment_date ASC`,
+      [patient_id, istTime.toISOString()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ message: "No upcoming appointments." });
+    }
+
+    // Return all upcoming appointments
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching upcoming appointments:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.get("/appointments/history/:patient_id", async (req, res) => {
+  const { patient_id } = req.params;
+
+  try {
+    // Get current time in IST
+    const now = new Date();
+    const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // 5.5 hours in milliseconds
+    
+    const result = await pool.query(
+      `SELECT * FROM appointments 
+       WHERE patient_id = $1 AND appointment_date < $2
+       ORDER BY appointment_date DESC`,
+      [patient_id, istTime.toISOString()]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching appointment history:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.post("/appointments/create", async (req, res) => {
+  const { patient_id, appointment_date, reason, status } = req.body;
+
+  if (!patient_id || !appointment_date || !reason) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO appointments (patient_id, appointment_date, reason, status)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [patient_id, appointment_date, reason, status || "Scheduled"]
+    );
+
+    res.json({ message: "Appointment created successfully", appointment: result.rows[0] });
+  } catch (error) {
+    console.error("Error creating appointment:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.put("/appointments/update", async (req, res) => {
+  const { appointment_id, appointment_date, reason } = req.body;
+
+  if (!appointment_id || !appointment_date) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    // First verify the appointment exists
+    const checkResult = await pool.query(
+      "SELECT * FROM appointments WHERE appointment_id = $1",
+      [appointment_id]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    // Update the appointment (without notes field)
+    const updateQuery = `
+      UPDATE appointments 
+      SET appointment_date = $1, 
+          reason = $2
+      WHERE appointment_id = $3
+      RETURNING *
+    `;
+    
+    const result = await pool.query(
+      updateQuery,
+      [appointment_date, reason, appointment_id]
+    );
+
+    res.json({ 
+      message: "Appointment updated successfully", 
+      appointment: result.rows[0] 
+    });
+  } catch (error) {
+    console.error("Error updating appointment:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
