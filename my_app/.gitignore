@@ -36,3 +36,20 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+.dart_tool/
+.expo/
+.idea/
+android/
+build/
+hooks/
+ios/
+lib/
+linux/
+macOS/
+scripts/
+test/
+windows/
+
+*.yaml
+*.iml

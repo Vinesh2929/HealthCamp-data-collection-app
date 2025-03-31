@@ -41,7 +41,7 @@ app.use(bodyParser.json());
 // I've removed the duplicate login route that was at the bottom of the file
 // and fixed this one to properly handle the hardcoded admin
 // ===================================================
-app.post("/login", async (req, res) => {
+/*app.post("/login", async (req, res) => {
   // Debug logging to see what's being received
   console.log("Login attempt received:", req.body);
   
@@ -115,7 +115,7 @@ app.post("/login", async (req, res) => {
     console.error("❌ Error logging in:", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
-});
+});*/
 
 // ===================================================
 // The rest of your routes below - no changes needed
@@ -610,51 +610,6 @@ app.get("/lookup-patient/:adharNumber", async (req, res) => {
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
-  }
-});
-
-app.post("/register", async (req, res) => {
-  const { first_name, last_name, email, password, role } = req.body;
-
-  try {
-    // Check if email already exists
-    const emailCheck = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // Hash password before storing
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert into `nurses` table (Auto-generates `nurse_id`)
-    const nurseResult = await pool.query(
-      `INSERT INTO nurses (first_name, last_name, email, password) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING nurse_id`,
-      [first_name, last_name, email, hashedPassword]
-    );
-
-    const nurse_id = nurseResult.rows[0].nurse_id; // Nurse ID (Auto-generated)
-
-    // Set selected role to 0.5 (pending approval), others to 0
-    const volunteer = role === "volunteer" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
-    const practitioner = role === "practitioner" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
-    const admin = role === "admin" ? "CAST(0.5 AS FLOAT)" : "CAST(0 AS FLOAT)";
-
-    // Insert into `users` table (user_id = nurse_id)
-    await pool.query(
-      `INSERT INTO users (user_id, volunteer, practitioner, admin) 
-       VALUES ($1, $2, $3, $4)`,
-      [nurse_id, volunteer, practitioner, admin]
-    );
-
-    res.status(201).json({
-      message: "User registered successfully",
-      nurse_id, // Nurse ID and User ID are the same
-    });
-  } catch (error) {
-    console.error("❌ Error registering user:", error.message);
-    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -1697,6 +1652,251 @@ app.put("/doctor-notes/update", async (req, res) => {
   } catch (error) {
     console.error("Error updating doctor note:", error);
     res.status(500).json({ error: "Database error" });
+  }
+});
+
+// UPDATED REGISTER ENDPOINT - Added fingerprint support
+app.post("/register", async (req, res) => {
+  const { first_name, last_name, email, password, role, enable_fingerprint } = req.body;
+
+  try {
+    // Check if email already exists
+    const emailCheck = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert into `nurses` table (Auto-generates `nurse_id`)
+    const nurseResult = await pool.query(
+      `INSERT INTO nurses (first_name, last_name, email, password, enable_fingerprint)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING nurse_id`,
+      [first_name, last_name, email, hashedPassword, enable_fingerprint || false]
+    );
+
+    const nurse_id = nurseResult.rows[0].nurse_id; // Nurse ID (Auto-generated)
+
+    // Set selected role to 0.5 (pending approval), others to 0
+    let volunteerValue = 0;
+    let practitionerValue = 0;
+    let adminValue = 0;
+
+    if (role === "volunteer") volunteerValue = 0.5;
+    else if (role === "practitioner") practitionerValue = 0.5;
+    else if (role === "admin") adminValue = 0.5;
+
+    // Insert into `users` table (user_id = nurse_id)
+    await pool.query(
+      `INSERT INTO users (user_id, volunteer, practitioner, admin)
+        VALUES ($1, $2, $3, $4)`,
+      [nurse_id, volunteerValue, practitionerValue, adminValue]
+    );
+
+    res.status(201).json({
+      message: "User registered successfully",
+      nurse_id, // Nurse ID and User ID are the same
+    });
+  } catch (error) {
+    console.error("❌ Error registering user:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// UPDATED LOGIN ENDPOINT - Added fingerprint status to response
+app.post("/login", async (req, res) => {
+  // Debug logging to see what's being received
+  console.log("Login attempt received:", req.body);
+  
+  const { email, password, role } = req.body;
+
+  // HARDCODED ADMIN - This bypasses all database checks
+  // ===================================================
+  if (email === "admin@healthcamp.com" && password === "admin123" && role === "admin") {
+    console.log("✅ HARDCODED ADMIN LOGIN SUCCESSFUL");
+    
+    // Generate JWT token for hardcoded admin
+    const token = jwt.sign(
+      { user_id: 999, role: "admin" },
+      process.env.JWT_SECRET || "fallback-secret-key", // Fallback in case JWT_SECRET is not set
+      { expiresIn: "1h" }
+    );
+    
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      role: "admin",
+      user_id: 999,
+      enable_fingerprint: false // Admin doesn't use fingerprint
+    });
+  }
+  
+  // If we get here, it's not the hardcoded admin - use regular auth flow
+  // ===================================================
+  try {
+    // 🔹 Check if user exists in the `nurses` table
+    const nurseResult = await pool.query("SELECT * FROM nurses WHERE email = $1", [email]);
+    if (nurseResult.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+    
+    const nurse = nurseResult.rows[0];
+    
+    // 🔹 Validate password
+    const isMatch = await bcrypt.compare(password, nurse.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+    
+    // 🔹 Retrieve the user's role status from `users` table
+    const userResult = await pool.query(
+      "SELECT user_id, COALESCE(volunteer, 0) AS volunteer, COALESCE(practitioner, 0) AS practitioner, COALESCE(admin, 0) AS admin FROM users WHERE user_id = $1",
+      [nurse.nurse_id]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User role not found. Please contact admin." });
+    }
+    
+    const user = userResult.rows[0];
+    
+    console.log(`🛠 Checking roles: User ID ${user.user_id}, Volunteer: ${user.volunteer}, Practitioner: ${user.practitioner}, Admin: ${user.admin}`);
+    
+    // 🔹 Check if the selected role is properly authorized (should be `1`)
+    if (
+      (role === "practitioner" && parseInt(user.practitioner) !== 1) ||
+      (role === "volunteer" && parseInt(user.volunteer) !== 1) ||
+      (role === "admin" && parseInt(user.admin) !== 1)
+    ) {
+      return res.status(403).json({ message: "Your selected role is not authorized. Request approval from an admin." });
+    }
+    
+    // 🔹 Generate JWT token
+    const token = jwt.sign({ user_id: user.user_id, role }, process.env.JWT_SECRET || "fallback-secret-key", { expiresIn: "1h" });
+    
+    // Include fingerprint status in the response
+    res.json({ 
+      message: "Login successful", 
+      token, 
+      role, 
+      user_id: user.user_id,
+      enable_fingerprint: nurse.enable_fingerprint || false,
+      user: {
+        first_name: nurse.first_name,
+        last_name: nurse.last_name,
+        email: nurse.email
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error logging in:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// NEW ENDPOINT - Fingerprint login
+app.post("/fingerprint-login", async (req, res) => {
+  console.log("Fingerprint login attempt received:", req.body);
+  
+  const { device_id, email, role } = req.body;
+  
+  // Validate required fields
+  if (!device_id || !email || !role) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+  
+  try {
+    // 1. Find the user by email
+    const nurseResult = await pool.query(
+      "SELECT * FROM nurses WHERE email = $1 AND enable_fingerprint = true", 
+      [email]
+    );
+    
+    if (nurseResult.rows.length === 0) {
+      return res.status(401).json({ message: "Unauthorized. Fingerprint login not enabled for this user." });
+    }
+    
+    const nurse = nurseResult.rows[0];
+    
+    // 2. Get the user's role information
+    const userResult = await pool.query(
+      "SELECT user_id, COALESCE(volunteer, 0) AS volunteer, COALESCE(practitioner, 0) AS practitioner, COALESCE(admin, 0) AS admin FROM users WHERE user_id = $1",
+      [nurse.nurse_id]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User role not found." });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // 3. Check if the selected role is authorized
+    if (
+      (role === "practitioner" && parseInt(user.practitioner) !== 1) ||
+      (role === "volunteer" && parseInt(user.volunteer) !== 1) ||
+      (role === "admin" && parseInt(user.admin) !== 1)
+    ) {
+      return res.status(403).json({ message: "Your selected role is not authorized." });
+    }
+    
+    // 4. If all checks pass, generate a token
+    const token = jwt.sign(
+      { user_id: user.user_id, role },
+      process.env.JWT_SECRET || "fallback-secret-key",
+      { expiresIn: "1h" }
+    );
+    
+    // 5. Update or store the device_id if it's a new one
+    // Uncomment this if you want to store/update the device ID with the user
+    /*
+    await pool.query(
+      "UPDATE nurses SET device_id = $1 WHERE nurse_id = $2",
+      [device_id, nurse.nurse_id]
+    );
+    */
+    
+    // 6. Return success response
+    res.status(200).json({
+      message: "Fingerprint login successful",
+      token,
+      role,
+      user_id: user.user_id,
+      user: {
+        first_name: nurse.first_name,
+        last_name: nurse.last_name,
+        email: nurse.email
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error in fingerprint login:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// NEW ENDPOINT - Update fingerprint settings
+app.put("/update-fingerprint/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  const { enable_fingerprint } = req.body;
+  
+  if (enable_fingerprint === undefined) {
+    return res.status(400).json({ message: "Missing enable_fingerprint parameter" });
+  }
+  
+  try {
+    // Update the nurse record
+    await pool.query(
+      "UPDATE nurses SET enable_fingerprint = $1 WHERE nurse_id = $2",
+      [enable_fingerprint, user_id]
+    );
+    
+    res.status(200).json({ 
+      message: `Fingerprint authentication ${enable_fingerprint ? 'enabled' : 'disabled'} successfully`, 
+      user_id 
+    });
+  } catch (error) {
+    console.error("❌ Error updating fingerprint settings:", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 

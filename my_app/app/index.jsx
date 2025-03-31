@@ -32,14 +32,14 @@ export default function HomeScreen() {
         <View style={styles.buttonContainer}>
           <Button
             title="Login"
-            onPress={() => router.push("/login")}
+            onPress={() => router.push("/PrintLogin")}
             style={styles.loginButton}
             textStyle={styles.buttonText}
           />
 
           <Button
             title="Register"
-            onPress={() => router.push("/register")}
+            onPress={() => router.push("/PrintRegister")}
             style={styles.registerButton}
             textStyle={styles.buttonText}
           />

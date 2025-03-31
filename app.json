@@ -32,8 +32,20 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
-    ],
+      ],
+      [
+        "expo-camera",
+                  {
+              "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to register your face for authentication."
+            }
+          ],
+          [
+            "expo-local-authentication",
+            {
+              "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for authentication."
+            }
+          ]
+        ],
     "experiments": {
       "typedRoutes": true
     }
