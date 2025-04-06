@@ -12,6 +12,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useRouter } from "expo-router";
+import { ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 
 // Update this URL to match your server address
 const API_BASE_URL = "http://localhost:5001";
@@ -243,6 +244,14 @@ export default function RegisterScreen() {
   };
 
   return (
+    <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : undefined}
+  >
+    <ScrollView
+      contentContainerStyle={styles.scrollContainer}
+      keyboardShouldPersistTaps="handled"
+    >
     <View style={styles.container}>
       <View style={styles.formContainer}>
         <Text style={styles.title}>User Registration</Text>
@@ -361,6 +370,8 @@ export default function RegisterScreen() {
         </TouchableOpacity>
       </View>
     </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -497,5 +508,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     fontWeight: "bold",
-  }
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
 });
