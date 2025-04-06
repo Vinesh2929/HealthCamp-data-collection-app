@@ -19,6 +19,8 @@ import { BackHandler } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import axios from "axios";
 import * as Network from "expo-network";
+import SpeechInput from "../components/SpeechInput";
+const chrono = require('chrono-node');
 
 
 // const PatientInfoPage1 = () => {
@@ -37,6 +39,7 @@ const PatientInfoPage1 = () => {
   const { adharNumber } = useLocalSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [language, setLanguage] = useState('en-US'); // Default to English
   const [patientInfo, setPatientInfo] = useState({
     fname: "",
     lname: "",
@@ -50,6 +53,7 @@ const PatientInfoPage1 = () => {
     adhar_number: "",
     phone_num: "",
   });
+
   const formatDate = (isoDate) => {
     if (!isoDate) return ""; // Handle empty case
     return new Date(isoDate).toLocaleDateString("en-US", {
@@ -97,7 +101,7 @@ const PatientInfoPage1 = () => {
             id: response.data.adhar_number ? String(response.data.adhar_number) : "",
             age: response.data.age ? String(response.data.age) : "",
             date: formatDate(response.data.date),
-          DOB: formatDate(response.data.dob),
+            DOB: formatDate(response.data.dob),
           }));
         }
 
@@ -144,6 +148,45 @@ const PatientInfoPage1 = () => {
     }
   };
 
+  const handleSpeechResult = (field, value) => {
+    console.log("🧠 handleSpeechResult triggered", field, value);
+  
+    let processedValue = value;
+  
+    if (['fname', 'lname', 'village'].includes(field)) {
+      processedValue = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    }
+  
+    if (field === 'date' || field === 'DOB') {
+      try {
+        const parsedDate = chrono.parseDate(value); // ✅ works now
+  
+        if (parsedDate) {
+          const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(parsedDate.getDate()).padStart(2, '0');
+          const yyyy = parsedDate.getFullYear();
+          processedValue = `${mm}/${dd}/${yyyy}`;
+          console.log(`📆 Chrono parsed: ${processedValue}`);
+        } else {
+          console.warn(`⚠️ Chrono could not parse: ${value}`);
+        }
+      } catch (err) {
+        console.error("❌ Chrono error:", err);
+      }
+    }
+  
+    updatePatientInfo(field, processedValue);
+  };
+  
+
+  const languages = [
+    { label: 'English', value: 'en-US' },
+    { label: 'Hindi', value: 'hi-IN' },
+    { label: 'Tamil', value: 'ta-IN' },
+    { label: 'Telugu', value: 'te-IN' },
+    { label: 'Bengali', value: 'bn-IN' },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -165,67 +208,165 @@ const PatientInfoPage1 = () => {
           <ThemedText style={styles.header}>Patient Information</ThemedText>
 
           <View style={styles.section}>
-            <Input
-              label="First Name"
-              value={patientInfo.fname}
-              onChangeText={(text) => updatePatientInfo("fname", text)}
-            />
-            <Input
-              label="Last Name"
-              value={patientInfo.lname}
-              onChangeText={(text) => updatePatientInfo("lname", text)}
-            />
-            <Input
-              label="Age"
-              value={patientInfo.age}
-              onChangeText={(text) => updatePatientInfo("age", text)}
-              keyboardType="numeric"
-            />
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="First Name"
+                value={patientInfo.fname}
+                onChangeText={(text) => updatePatientInfo("fname", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say first name"
+                language={language}
+                fieldName="fname"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Last Name"
+                value={patientInfo.lname}
+                onChangeText={(text) => updatePatientInfo("lname", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say last name"
+                language={language}
+                fieldName="lname"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Age"
+                value={patientInfo.age}
+                onChangeText={(text) => updatePatientInfo("age", text)}
+                keyboardType="numeric"
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say age"
+                language={language}
+                fieldName="age"
+              />
+            </View>
+
             <Dropdown
               label="Gender"
               options={["Male", "Female", "Other"]}
               selectedValue={patientInfo.gender}
               onValueChange={(value) => updatePatientInfo("gender", value)}
             />
-            <Input
-              label="Address"
-              value={patientInfo.address}
-              onChangeText={(text) => updatePatientInfo("address", text)}
-              multiline
-            />
-            <Input
-              label="Village"
-              value={patientInfo.village}
-              onChangeText={(text) => updatePatientInfo("village", text)}
-            />
 
-            <Input
-              label="Date"
-              value={patientInfo.date}
-              onChangeText={(text) => updatePatientInfo("date", text)}
-            />
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Address"
+                value={patientInfo.address}
+                onChangeText={(text) => updatePatientInfo("address", text)}
+                multiline
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say address"
+                language={language}
+                fieldName="address"
+              />
+            </View>
 
-            <Input
-              label="Worker Name"
-              value={patientInfo.worker_name}
-              onChangeText={(text) => updatePatientInfo("worker_name", text)}
-            />
-            <Input
-              label="Date of Birth"
-              value={patientInfo.DOB}
-              onChangeText={(text) => updatePatientInfo("DOB", text)}
-            />
-            <Input
-              label="ID (Aadhar Number)"
-              value={patientInfo.id}
-              onChangeText={(text) => updatePatientInfo("adhar_number", text)}
-            />
-            <Input
-              label="Phone Number"
-              value={patientInfo.phone_num}
-              onChangeText={(text) => updatePatientInfo("phone_num", text)}
-              keyboardType="phone-pad"
-            />
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Village"
+                value={patientInfo.village}
+                onChangeText={(text) => updatePatientInfo("village", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say village"
+                language={language}
+                fieldName="village"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Date"
+                value={patientInfo.date}
+                onChangeText={(text) => updatePatientInfo("date", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say date"
+                language={language}
+                fieldName="date"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Worker Name"
+                value={patientInfo.worker_name}
+                onChangeText={(text) => updatePatientInfo("worker_name", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say worker name"
+                language={language}
+                fieldName="worker_name"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Date of Birth"
+                value={patientInfo.DOB}
+                onChangeText={(text) => updatePatientInfo("DOB", text)}
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say date of birth"
+                language={language}
+                fieldName="DOB"
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="ID (Aadhar Number)"
+                value={patientInfo.adhar_number} // Changed from patientInfo.id
+                onChangeText={(text) => updatePatientInfo("adhar_number", text)} // Make sure this is "adhar_number"
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say Aadhar number"
+                language={language}
+                fieldName="adhar_number" // Make sure this matches exactly
+              />
+            </View>
+
+            <View style={styles.inputWithVoice}>
+              <Input
+                label="Phone Number"
+                value={patientInfo.phone_num}
+                onChangeText={(text) => updatePatientInfo("phone_num", text)}
+                keyboardType="phone-pad"
+                style={styles.input}
+              />
+              <SpeechInput
+                onSpeechResult={handleSpeechResult}
+                placeholder="Say phone number"
+                language={language}
+                fieldName="phone_num"
+              />
+            </View>
           </View>
 
           <Button

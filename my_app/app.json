@@ -9,13 +9,23 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.saad1035.myapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -35,19 +45,34 @@
       ],
       [
         "expo-camera",
-                  {
-              "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to register your face for authentication."
-            }
-          ],
-          [
-            "expo-local-authentication",
-            {
-              "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for authentication."
-            }
-          ]
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to register your face for authentication."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for authentication."
+        }
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow this app to access your microphone",
+          "speechRecognitionPermission": "Allow this app to access speech recognition"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "200a97f3-02ad-4849-aaec-fcfd14bfda14"
+      }
     }
   }
 }
