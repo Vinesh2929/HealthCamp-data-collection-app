@@ -25,8 +25,6 @@ A full-stack web and mobile application to streamline patient registration and d
 3. Start frontend and backend servers
 4. Access app in browser at `localhost:PORT`
 
-## 📄 License
-MIT License
 
 ## 🙋‍♂️ Author
 [Vinesh Nathan](https://www.linkedin.com/in/vinesh-nathan-ab368825b)
